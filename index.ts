@@ -1,43 +1,69 @@
-import OpenAI from "openai";
-import { functions, tools } from "./tools";
+import { ActivityType, Client, GatewayIntentBits, REST, Routes } from 'discord.js';
+import { OpenAiCommand } from './commands/openai';
+import { TextChannel } from 'discord.js';
 
-const openai = new OpenAI();
 
-const model = "gpt-3.5-turbo";
-async function main() {
-  const messages: OpenAI.ChatCompletionMessageParam[] = [
-    { role: "user", content: "give me a special number based on 6" },
-  ];
 
-  const res = await openai.chat.completions.create({
-    model,
-    messages,
-    stream: false,
-    tools,
-    max_tokens: 150,
-    tool_choice: "auto",
-  });
 
-  res.choices[0].message.tool_calls?.forEach(async (tool_call) => {
-    console.log(tool_call);
-    if (tool_call.type === "function" && functions[tool_call.function.name]) {
-      messages.push(res.choices[0].message);
-      const fnc_res = functions[tool_call.function.name](
-        JSON.parse(tool_call.function.arguments),
-      );
-      messages.push({
-        tool_call_id: tool_call.id,
-        role: "tool",
-        content: fnc_res.toString(),
-      });
+const client = new Client({
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+});
 
-      const secondResponse = await openai.chat.completions.create({
-        model,
-        messages: messages,
-      });
-      console.log(secondResponse.choices[0]);
-    }
-  });
+const token = process.env.DISCORD_BOT_TOKEN;
+const clientId = String(process.env.DISCORD_CLIENT_ID);
+
+if (!token) {
+    throw new Error('No token provided');
+}
+if (!clientId) {
+    throw new Error('No client id provided');
 }
 
-main();
+const commands = [
+    OpenAiCommand
+];
+
+const rest = new REST({ version: '10' }).setToken(token);
+
+try {
+    console.log('Started refreshing application (/) commands.');
+
+    await rest.put(Routes.applicationCommands(clientId), { body: commands.map(c => c.command.toJSON()) });
+
+    console.log('Successfully reloaded application (/) commands.');
+} catch (error) {
+    console.error(error);
+}
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+
+    const { commandName } = interaction;
+
+    for (let com of commands) {
+        if (com.command.name === commandName) {
+            await com.execute(interaction)
+        }
+    }
+
+});
+
+export function setBotPresence({ message, type }: { message: string, type: ActivityType }) {
+    client.user?.setActivity(message, { type: Number(type) });
+    return "Presence set"
+}
+
+export function scheduleBotMessage({ message, channelId, time }: { message: string, time: number, channelId: string }) {
+    setTimeout(() => {
+        const channel = client.channels.cache.get(channelId);
+        if (channel instanceof TextChannel) {
+            channel.send(message);
+        }
+    }, time);
+    return "Message scheduled"
+}
+
+// Log in to Discord
+client.login(token);
+
+export const discordClient = client;

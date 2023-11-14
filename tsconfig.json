@@ -16,9 +16,9 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "types": [
-      "bun-types" // add Bun global
+      "bun-types"
     ],
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
   },
   "reflection": true
 }
