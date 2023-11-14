@@ -1,42 +1,43 @@
-import {
-  OpenAIApi,
-  Configuration,
-  CreateChatCompletionRequest,
-  ChatCompletionRequestMessage,
-  ChatCompletionRequestMessageRoleEnum,
-} from "openai";
-import { ToolFunction, handleToolUse } from "@typeai/core";
+import OpenAI from "openai";
+import { functions, tools } from "./tools";
 
-function getSpecialNumber(user_number: number) {
-  return user_number * 2;
+const openai = new OpenAI();
+
+const model = "gpt-3.5-turbo";
+async function main() {
+  const messages: OpenAI.ChatCompletionMessageParam[] = [
+    { role: "user", content: "give me a special number based on 6" },
+  ];
+
+  const res = await openai.chat.completions.create({
+    model,
+    messages,
+    stream: false,
+    tools,
+    max_tokens: 150,
+    tool_choice: "auto",
+  });
+
+  res.choices[0].message.tool_calls?.forEach(async (tool_call) => {
+    console.log(tool_call);
+    if (tool_call.type === "function" && functions[tool_call.function.name]) {
+      messages.push(res.choices[0].message);
+      const fnc_res = functions[tool_call.function.name](
+        JSON.parse(tool_call.function.arguments),
+      );
+      messages.push({
+        tool_call_id: tool_call.id,
+        role: "tool",
+        content: fnc_res.toString(),
+      });
+
+      const secondResponse = await openai.chat.completions.create({
+        model,
+        messages: messages,
+      });
+      console.log(secondResponse.choices[0]);
+    }
+  });
 }
 
-// Init OpenAI client
-const configuration = new Configuration({ apiKey: process.env.OPENAI_API_KEY });
-const openai = new OpenAIApi(configuration);
-
-// Generate JSON Schema for function and dependent types
-const getSpecialNumberTool = ToolFunction.from(getSpecialNumber);
-
-// Run a chat completion sequence
-const messages: ChatCompletionRequestMessage[] = [
-  {
-    role: ChatCompletionRequestMessageRoleEnum.User,
-    content: "What's the special number",
-  },
-];
-const request: CreateChatCompletionRequest = {
-  model: "gpt-3.5-turbo",
-  messages,
-  functions: [getSpecialNumberTool.schema],
-  stream: false,
-  max_tokens: 1000,
-};
-
-const { data: response } = await openai.createChatCompletion(request);
-
-// Transparently handle any LLM calls to your function.
-// handleToolUse() returns OpenAI's final response after
-// any/all function calls have been completed
-const responseData = await handleToolUse(openai, request, response);
-const result = responseData?.choices[0].message;
+main();

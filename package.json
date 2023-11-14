@@ -11,6 +11,6 @@
   "dependencies": {
     "@deepkit/core": "^1.0.1-alpha.105",
     "@typeai/core": "^0.6.1",
-    "openai": "^4.17.5"
+    "openai": "latest"
   }
 }
