@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import * as math from "mathjs";
-import { scheduleBotMessage, setBotPresence } from "..";
+import { scheduleBotMessage, setBotPresence } from "../../..";
 import { ActivityType } from "discord.js";
 
 

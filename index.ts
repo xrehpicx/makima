@@ -1,12 +1,10 @@
-import { ActivityType, Client, GatewayIntentBits, REST, Routes } from 'discord.js';
-import { OpenAiCommand } from './commands/openai';
+import { ActivityType, ChannelType, Client, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
+import { OpenAiCommand, handleDM } from './commands/openai';
 import { TextChannel } from 'discord.js';
 
-
-
-
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
+    partials: [Partials.Channel]
 });
 
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -35,7 +33,23 @@ try {
     console.error(error);
 }
 
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+
+    const isDm = message.channel?.type === ChannelType.DM;
+
+    if (isDm) {
+        console.log("is dm")
+        handleDM(message)
+        return
+    }
+})
+
+
+
 client.on('interactionCreate', async interaction => {
+
+
     if (!interaction.isCommand()) return;
 
     const { commandName } = interaction;

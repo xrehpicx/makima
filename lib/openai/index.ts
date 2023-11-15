@@ -1,13 +1,32 @@
 import OpenAI from "openai";
-import { functions, tools } from ".";
+import { functions, tools } from "./tools";
+import user_config from "../../user.json";
 
-const openai = new OpenAI();
+const openai = new OpenAI({
+  timeout: 10000,
+});
 
 const model = "gpt-3.5-turbo";
 
-
 const messages: OpenAI.ChatCompletionMessageParam[] = [
+  {
+    role: "system",
+    content: `You are a bot named makima with discord integration. your creator is ${user_config.name} and their discord username and user_id is ${user_config.discord_username} and ${user_config.discord_userid}. keep all replies short until told otherwise`,
+  }
 ];
+
+console.log("Testing openai api");
+const res = await openai.chat.completions.create({
+  model,
+  messages: [
+    {
+      role: "user",
+      content: "just replay with 'works'",
+    }
+  ] as OpenAI.ChatCompletionMessageParam[],
+  max_tokens: 100,
+});
+console.log(res.choices[0].message.content)
 
 export async function ask(initialMessage: string) {
 
@@ -21,7 +40,6 @@ export async function ask(initialMessage: string) {
   const res = await openai.chat.completions.create({
     model,
     messages,
-    stream: false,
     tools,
     max_tokens: 150,
     tool_choice: "auto",
@@ -47,7 +65,6 @@ async function callFunction(message: OpenAI.Chat.Completions.ChatCompletionMessa
         const secondResponse = await openai.chat.completions.create({
           model,
           messages: messages,
-          stream: false,
           tools,
           max_tokens: 150,
           tool_choice: "auto",
