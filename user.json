@@ -1,5 +1,9 @@
 {
     "name": "Raj Sharma",
     "discord_username": "xrehpicx",
-    "discord_userid": "509004765380739107"
+    "discord_userid": "509004765380739107",
+    "admins": [
+        "509004765380739107",
+        "689467039873892429"
+    ]
 }

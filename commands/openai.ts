@@ -16,11 +16,11 @@ export const OpenAiCommand = {
         console.log("running chat command")
         await interaction.user.send("Running chat command")
         // check user role
-        if (!(!Array.isArray(interaction.member?.roles) && interaction.member?.roles.cache.find(r => r.name === 'kin-dev'))) {
+        if (!(!Array.isArray(interaction.member?.roles) && interaction.member?.roles.cache.find(r => r.name === 'kin-dev' || r.name === 'tokio'))) {
             await interaction.user.send("Running chat command")
             return
         }
-        const res = await ask(`${interaction.options.data.find(opt => opt.name === 'message')?.value}\nuser_id: ${interaction.member.user.id}\nchannelId: ${interaction.channelId}` as string)
+        const res = await ask(`${interaction.options.data.find(opt => opt.name === 'message')?.value}\nuser_id: ${interaction.member.user.id}\nchannelId: ${interaction.channelId}` as string, interaction.channelId)
         console.log("res", res)
         interaction.editReply(res?.content ?? "No reply from model")
     }
@@ -30,7 +30,8 @@ export const OpenAiCommand = {
 export const handleDM = async (message: Message<boolean>) => {
     console.log("message", message.content)
     const stopTyping = typingController(message)
-    const res = await ask(`${message.content}\nuser_id: ${message.author.id}\nchannelId: ${message.channelId}` as string).finally(() => stopTyping())
+    const res = await ask(`${message.content}\nuser_id: ${message.author.id}\nchannelId: ${message.channelId}` as string, message.channelId)
+    stopTyping()
     console.log("res", res?.content)
     message.channel.send(res?.content ?? "No reply from model")
 }
@@ -39,7 +40,7 @@ export const handleDM = async (message: Message<boolean>) => {
 function typingController(message: Message<boolean>) {
     const interval = setInterval(() => {
         message.channel.sendTyping()
-    }, 2000)
+    }, 5000)
     return () => {
         clearInterval(interval)
     }

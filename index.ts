@@ -1,7 +1,7 @@
 import { ActivityType, ChannelType, Client, GatewayIntentBits, Partials, REST, Routes } from 'discord.js';
 import { OpenAiCommand, handleDM } from './commands/openai';
 import { TextChannel } from 'discord.js';
-
+import config from './user.json';
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel]
@@ -38,7 +38,7 @@ client.on('messageCreate', async message => {
 
     const isDm = message.channel?.type === ChannelType.DM;
 
-    if (isDm) {
+    if (isDm && config.admins.includes(message.author.id)) {
         console.log("is dm")
         handleDM(message)
         return
@@ -64,14 +64,16 @@ client.on('interactionCreate', async interaction => {
 
 export function setBotPresence({ message, type }: { message: string, type: ActivityType }) {
     client.user?.setActivity(message, { type: Number(type) });
-    return "Presence set"
+    return "Presence set to" + "" + type + " " + message
 }
 
 export function scheduleBotMessage({ message, channelId, time }: { message: string, time: number, channelId: string }) {
     setTimeout(() => {
-        const channel = client.channels.cache.get(channelId);
-        if (channel instanceof TextChannel) {
-            channel.send(message);
+        const channel = client.channels.cache.find(id => id.id === channelId);
+        if (channel?.isDMBased()) {
+            channel.isTextBased() && (channel).send(message);
+        } else if (channel instanceof TextChannel) {
+            (channel as TextChannel).send(message);
         }
     }, time);
     return "Message scheduled"

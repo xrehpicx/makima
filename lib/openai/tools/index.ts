@@ -2,59 +2,56 @@ import OpenAI from "openai";
 import * as math from "mathjs";
 import { scheduleBotMessage, setBotPresence } from "../../..";
 import { ActivityType } from "discord.js";
+import { createClock, createWebBrowser, createRequest } from "openai-function-calling-tools";
 
 
-function calculator({ expression }: { expression: string }) {
-  const res = String(math.evaluate(expression));
-  console.log(expression, res);
-  return res
-}
+// function calculator({ expression }: { expression: string }) {
+//   const res = String(math.evaluate(expression));
+//   console.log(expression, res);
+//   return res
+// }
 
-function get_date_time() {
-  return new Date().toLocaleString();
-}
+// function get_date_time() {
+//   return `${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`
+// }
+
+// function to execute javascript in a child process and return the stdout or stderr
+// function runUbuntuCommand({ code }: { code: string }) {
+//   const { exec } = require("child_process");
+//   return new Promise<string>((resolve, reject) => {
+//     exec(code, (error: any, stdout: any, stderr: any) => {
+//       if (error) {
+//         console.log(`error: ${error.message}`);
+//         reject(error.message)
+//       }
+//       if (stderr) {
+//         console.log(`stderr: ${stderr}`);
+//         reject(stderr)
+//       }
+//       console.log(`stdout: ${stdout}`);
+//       resolve(stdout)
+//     });
+//   })
+
+// }
+
+const [clock, clockSchema] = createClock()
+const [webbrowser, webBrowserSchema] = createWebBrowser()
+const [request, requestSchema] = createRequest()
 
 
-export const functions: Record<string, typeof calculator | typeof get_date_time | typeof setBotPresence | typeof scheduleBotMessage> = {
-  calculator,
-  get_date_time,
+
+export const functions: Record<string, (...args: any[]) => any> = {
   set_presence: setBotPresence,
-  schedule_message: scheduleBotMessage
+  schedule_message: scheduleBotMessage,
+  clock,
+  webbrowser,
+  request
 };
 
 
 
 export const tools: OpenAI.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "calculator",
-      description: "Calculate a math expression",
-      parameters: {
-        type: "object",
-        properties: {
-          expression: {
-            type: "string",
-            description:
-              "The math expression that you want to calculate",
-          },
-        },
-        required: ["expression"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "get_date_time",
-      description: "Get the current date and time",
-      parameters: {
-        type: "object",
-        properties: {},
-        required: [],
-      },
-    },
-  },
   {
     type: "function",
     function: {
@@ -83,14 +80,14 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "schedule_message",
-      description: "Schedule a message to be sent",
+      description: "Schedule a message to be sent when user asks to do so, do not use this to spam users, use this to send a message to a user after a certain amount of time",
       parameters: {
         type: "object",
         properties: {
           message: {
             type: "string",
             description:
-              "The message to send, tag the user with <@user_id> everytime",
+              "The message to send, tag the user with <@user_id> when the user asks",
           },
           time: {
             type: "number",
@@ -106,5 +103,21 @@ export const tools: OpenAI.ChatCompletionTool[] = [
         required: ["message", "time", "channelId"],
       },
     },
-  }
+  },
+  {
+    type: "function",
+    function: clockSchema as OpenAI.FunctionDefinition
+  },
+  {
+    type: "function",
+    function: {
+      ...webBrowserSchema,
+      description: "Open a web browser and return the html of the page, use this only when absolutely needed, do not use this to scrape file links or gif links, use the request function for that",
+    } as OpenAI.FunctionDefinition
+  },
+  {
+    type: "function",
+    function: requestSchema as OpenAI.FunctionDefinition
+  },
+
 ];
