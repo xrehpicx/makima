@@ -2,6 +2,7 @@ import { ActivityType, ChannelType, Client, GatewayIntentBits, Partials, REST, R
 import { OpenAiCommand, handleDM } from './commands/openai';
 import { TextChannel } from 'discord.js';
 import config from './user.json';
+import { RestartCommand } from './commands/restart';
 const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
     partials: [Partials.Channel]
@@ -18,7 +19,7 @@ if (!clientId) {
 }
 
 const commands = [
-    OpenAiCommand
+    OpenAiCommand, RestartCommand
 ];
 
 const rest = new REST({ version: '10' }).setToken(token);
@@ -31,6 +32,36 @@ try {
     console.log('Successfully reloaded application (/) commands.');
 } catch (error) {
     console.error(error);
+}
+
+client.on('ready', () => {
+    console.log(`Logged in as ${client.user?.tag}!`);
+    notifyChannel("Makima is online")
+    client.user?.setActivity("with your mind", { type: Number(ActivityType.Playing) });
+
+    // config.admins.forEach(id => {
+    //     client.users.createDM(id)
+    //     client.users.fetch(id).then(user => {
+    //         user.send("Makima is online")
+    //     })
+    // })
+})
+
+export function notifyAdmins(message: string) {
+    config.admins.forEach(id => {
+        client.users.fetch(id).then(user => {
+            user.send(message)
+        })
+    })
+}
+
+export function notifyChannel(message: string, channelId: string = config.notification_channel) {
+    const channel = client.channels.cache.find(id => id.id === channelId);
+    if (channel?.isDMBased()) {
+        channel.isTextBased() && (channel).send(message);
+    } else if (channel instanceof TextChannel) {
+        (channel as TextChannel).send(message);
+    }
 }
 
 client.on('messageCreate', async message => {
@@ -64,7 +95,7 @@ client.on('interactionCreate', async interaction => {
 
 export function setBotPresence({ message, type }: { message: string, type: ActivityType }) {
     client.user?.setActivity(message, { type: Number(type) });
-    return "Presence set to" + "" + type + " " + message
+    return "Presence set to" + "" + type + " " + message + " Successfully, reply to the user that the presence was set Successfully"
 }
 
 export function scheduleBotMessage({ message, channelId, time }: { message: string, time: number, channelId: string }) {
@@ -76,7 +107,7 @@ export function scheduleBotMessage({ message, channelId, time }: { message: stri
             (channel as TextChannel).send(message);
         }
     }, time);
-    return "Message scheduled"
+    return `Message will be sent after ${time} milliseconds, reply to the user that the message was scheduled to be sent after ${time} milliseconds`
 }
 
 // Log in to Discord
