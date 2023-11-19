@@ -7,4 +7,5 @@ export const makima_config = {
   },
   admin_channels: [],
   notification_channel: "1142524472071565384",
+  admins: ["509004765380739107"] as string[],
 } as const;

@@ -16,10 +16,11 @@
     "forceConsistentCasingInFileNames": true,
     "allowJs": true,
     "resolveJsonModule": true,
-    "types": [
-      "bun-types"
-    ],
+    "types": ["bun-types"],
     "experimentalDecorators": true,
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "reflection": true
 }
