@@ -47,7 +47,7 @@ export const OpenAiCommand = {
           interface: "discord",
         },
       };
-      const stopTyping = handleTyping();
+      const stopTyping = handleTyping(message);
       const res = await ai(
         `${message.content}\n${JSON.stringify(meta)}`,
         message.channelId,
@@ -60,6 +60,7 @@ export const OpenAiCommand = {
       );
       pending = pending.filter((c) => c.id !== message.channelId);
     } catch (err) {
+      !controller.signal.aborted && controller.abort();
       !controller.signal.aborted
         ? message.channel.send(`Something went wrong: ${String(err)}`)
         : console.log(`Something went wrong: ${String(err)}`);
