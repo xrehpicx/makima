@@ -47,12 +47,13 @@ export const OpenAiCommand = {
           interface: "discord",
         },
       };
+      const stopTyping = handleTyping();
       const res = await ai(
         `${message.content}\n${JSON.stringify(meta)}`,
         message.channelId,
         controller.signal,
       );
-
+      stopTyping();
       message.channel.send(
         res?.response.message.content ??
         `Something went wrong: ${JSON.stringify(res?.response)}`,
@@ -65,3 +66,10 @@ export const OpenAiCommand = {
     }
   },
 };
+
+function handleTyping(message: Message) {
+  const interval = setInterval(() => {
+    message.channel.sendTyping();
+  }, 5000);
+  return () => clearInterval(interval);
+}
