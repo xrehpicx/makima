@@ -60,10 +60,12 @@ export const OpenAiCommand = {
       );
       pending = pending.filter((c) => c.id !== message.channelId);
     } catch (err) {
-      !controller.signal.aborted && controller.abort();
-      !controller.signal.aborted
-        ? message.channel.send(`Something went wrong: ${String(err)}`)
-        : console.log(`Something went wrong: ${String(err)}`);
+      message.channel.send(`Something went wrong: ${String(err)}`);
+      if (controller.signal.aborted) {
+        console.log(`Something went wrong: ${String(err)}`);
+      } else {
+        controller.abort();
+      }
     }
   },
 };

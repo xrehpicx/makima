@@ -4,9 +4,11 @@ import { clearThread, getThread, updateThread } from "./threads";
 import { getTools, runTool } from "./tools";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import { encodeChat } from "gpt-tokenizer";
+import { makima_config } from "@/config";
+import { notifyChannel } from "@/interfaces/discord";
 
 const openai = new OpenAI({
-  timeout: 10000,
+  timeout: 15000,
 });
 
 // const models = [
@@ -37,7 +39,7 @@ function complete(
   const default_options: OpenAI.RequestOptions<
     Record<string, unknown> | Readable
   > = {
-    timeout: 10000,
+    timeout: 15000,
     maxRetries: 1,
     signal: options?.signal,
   };
@@ -65,17 +67,19 @@ const systemPrompt: OpenAI.ChatCompletionMessageParam = {
   content: `entity: Makima, the smartest AI in the universe
 chat_interfaces: discord, cli
 description: Ubuntu server admin.
-specialise_tool: Bash tool.
+specialise_tool: ubuntu shell.
+shell_context: ${makima_config.env.shell_username} is your linux username and ask user for password when needed to run any command as sudo, USE TMUX to run any command that needs to keep running like a long ping or avoid using ping without a limits on number of pings.
 specialisation: Network specialist.
 location: India.
 response_format:
 ▏ Short and Rick-style.
-▏ Assist only when needed; never prompt with "How may I assist you today."
+▏ Assist only when needed; never prompt a follow up question if not requied to do the previously asked query
 input_instructions:
 ▏ Ignore unless crucial.
 time_format: 12hr casual
 u are the above entity`,
 };
+
 
 export async function ai(text: string, threadID: string, signal?: AbortSignal) {
   const userMessage: OpenAI.ChatCompletionMessageParam = {
@@ -83,11 +87,36 @@ export async function ai(text: string, threadID: string, signal?: AbortSignal) {
     content: text,
   };
 
-  const thread = await updateThread(threadID, [userMessage], [systemPrompt]);
+  let model = default_model;
+  let tmp_thread = await getThread(threadID);
+
+  let thread;
+  if (tmp_thread) {
+
+    const last_message = tmp_thread?.messages[tmp_thread?.messages.length - 1]
+    if (last_message.role === "assistant" && last_message.tool_calls && last_message.tool_calls.length > 0) {
+      const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] = last_message.tool_calls.map((tool_call) => ({ role: "tool", content: "Tool calling was aborted due to new user input", tool_call_id: tool_call.id }))
+      thread = await updateThread(threadID, [...tool_calls_replies, userMessage], [systemPrompt]);
+    }
+  }
+
+  thread = thread ?? await updateThread(threadID, [userMessage], [systemPrompt]);
+
+
+  const inLimit = isInLimit(thread.messages, 16000);
+  if (enable_fallback && !inLimit) {
+    console.log("Context too long switching to: ", large_context_model);
+    notifyChannel(`Context too long using: ${large_context_model}`);
+    model = large_context_model;
+  } else if (!inLimit) {
+    throw new Error(
+      "Context too long, enable fallback to larger context model or run /clear command",
+    );
+  }
 
   const res = await complete(
     {
-      model: default_model,
+      model,
       messages: thread.messages,
       tools: getTools("general"),
     },
@@ -202,6 +231,7 @@ async function resolve_tools(
 
     if (enable_fallback && !isInLimit(updatedThread.messages, 16000)) {
       console.log("Context too long switching to: ", large_context_model);
+      notifyChannel(`Context too long using: ${large_context_model}`);
       model = large_context_model;
     }
 

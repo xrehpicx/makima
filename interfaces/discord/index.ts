@@ -12,6 +12,7 @@ import { TextChannel } from "discord.js";
 import { makima_config as config } from "@/config";
 import { RestartCommand } from "./commands/restart";
 import { OpenAiCommand } from "./commands/openai";
+import { ClearConvoCommand } from "./commands/clear";
 
 const client = new Client({
   intents: [
@@ -33,7 +34,7 @@ if (!clientId) {
   throw new Error("No client id provided");
 }
 
-const commands = [RestartCommand];
+const commands = [RestartCommand, ClearConvoCommand];
 
 const rest = new REST({ version: "10" }).setToken(token);
 
@@ -95,5 +96,6 @@ export function notifyChannel(
 
 export async function setup_discord() {
   await client.login(token);
+  notifyChannel("Makima restarted");
   return client;
 }
