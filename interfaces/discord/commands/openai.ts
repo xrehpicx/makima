@@ -68,6 +68,7 @@ export const OpenAiCommand = {
 };
 
 function handleTyping(message: Message) {
+  message.channel.sendTyping();
   const interval = setInterval(() => {
     message.channel.sendTyping();
   }, 5000);
