@@ -76,6 +76,15 @@ export async function clearThread(threadId: string) {
   }
 }
 
+// function to delete all threads
+export async function clearAllThreads() {
+  try {
+    await writeThreadsToFile({});
+  } catch (error) {
+    console.error("Error clearing all threads:", error);
+  }
+}
+
 // Function to get a thread by ID
 export async function getThread(
   threadId: string,

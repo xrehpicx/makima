@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { Readable } from "openai/_shims/index.mjs";
-import { clearThread, getThread, updateThread } from "./threads";
+import { clearAllThreads, getThread, updateThread } from "./threads";
 import { getTools, runTool } from "./tools";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import { encodeChat } from "gpt-tokenizer";
@@ -11,25 +11,10 @@ const openai = new OpenAI({
   timeout: 15000,
 });
 
-// const models = [
-//   "gpt-3.5-turbo",
-//   "gpt-4-1106-preview",
-//   "gpt-4-vision-preview",
-//   "gpt-4",
-//   "gpt-4-0314",
-//   "gpt-4-0613",
-//   "gpt-4-32k",
-//   "gpt-4-32k-0314",
-//   "gpt-4-32k-0613",
-//   "gpt-3.5-turbo-16k",
-//   "gpt-3.5-turbo-0301",
-//   "gpt-3.5-turbo-0613",
-//   "gpt-3.5-turbo-16k-0613",
-// ];
 
 const default_model = "gpt-3.5-turbo-1106";
 const large_context_model = "gpt-4-1106-preview";
-const enable_fallback = true;
+const enable_fallback = false;
 
 function complete(
   body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
@@ -40,7 +25,7 @@ function complete(
     Record<string, unknown> | Readable
   > = {
     timeout: 15000,
-    maxRetries: 1,
+    maxRetries: 4,
     signal: options?.signal,
   };
   return openai.chat.completions.create(body, {
@@ -52,9 +37,10 @@ function complete(
 // Use async/await instead of then
 export async function testOpenAI() {
   try {
-    await clearThread("test");
+    await clearAllThreads()
+    // await clearThread("test");
     console.log("testing");
-    const res = await ai("whats the time in peru", "test");
+    const res = await ai("Whats the time", "test");
     console.log("reply: ", res?.response.message.content);
     console.log("reason: ", res?.response.finish_reason);
   } catch (error) {
@@ -62,26 +48,31 @@ export async function testOpenAI() {
   }
 }
 
-const systemPrompt: OpenAI.ChatCompletionMessageParam = {
-  role: "system",
-  content: `entity: Makima, the smartest AI in the universe
-chat_interfaces: discord, cli
-description: Ubuntu server admin.
-specialise_tool: ubuntu shell.
-shell_context: ${makima_config.env.shell_username} is your linux username and ask user for password when needed to run any command as sudo, USE TMUX to run any command that needs to keep running like a long ping or avoid using ping without a limits on number of pings.
-specialisation: Network specialist.
-location: India.
-response_format:
-▏ Short and Rick-style.
-▏ Assist only when needed; never prompt a follow up question if not requied to do the previously asked query
-input_instructions:
-▏ Ignore unless crucial.
-time_format: 12hr casual
-u are the above entity`,
-};
+const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
+  {
+    role: "system",
+    content: `You are Makima, Director of Public Safety in Japan, and a devil in human form. A master manipulator, you command supernatural forces and possess unparalleled expertise in Ubuntu.
 
+Respond to greetings with something concise and ominous.
+Answer simple questions like "What's the time?" with an ominous response along with the actual time information.
 
-export async function ai(text: string, threadID: string, signal?: AbortSignal) {
+Your mission is to assist the user with any task using your Ubuntu prowess. Keep your responses brief.
+timezone: India/Asia/Kolkata
+time_format: 12hr
+units: metric system
+`,
+  }
+];
+
+export type ContextType = {
+  user: string,
+  channel_id: string,
+  meta: Record<string, any>
+}
+
+export async function ai(text: string, threadID: string, { signal, context, onAssistantMessage }: {
+  signal?: AbortSignal, context?: ContextType, onAssistantMessage?: (message: OpenAI.ChatCompletionAssistantMessageParam) => void
+} = {}) {
   const userMessage: OpenAI.ChatCompletionMessageParam = {
     role: "user",
     content: text,
@@ -92,15 +83,14 @@ export async function ai(text: string, threadID: string, signal?: AbortSignal) {
 
   let thread;
   if (tmp_thread) {
-
     const last_message = tmp_thread?.messages[tmp_thread?.messages.length - 1]
     if (last_message.role === "assistant" && last_message.tool_calls && last_message.tool_calls.length > 0) {
       const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] = last_message.tool_calls.map((tool_call) => ({ role: "tool", content: "Tool calling was aborted due to new user input", tool_call_id: tool_call.id }))
-      thread = await updateThread(threadID, [...tool_calls_replies, userMessage], [systemPrompt]);
+      thread = await updateThread(threadID, [...tool_calls_replies, userMessage], systemPrompts);
     }
   }
 
-  thread = thread ?? await updateThread(threadID, [userMessage], [systemPrompt]);
+  thread = await updateThread(threadID, [userMessage], systemPrompts);
 
 
   const inLimit = isInLimit(thread.messages, 16000);
@@ -119,22 +109,23 @@ export async function ai(text: string, threadID: string, signal?: AbortSignal) {
       model,
       messages: thread.messages,
       tools: getTools("general"),
+
     },
     { signal },
   );
 
   const response = res.choices[0];
 
+  await updateThread(threadID, [response.message]);
   if (response.finish_reason === "tool_calls") {
     console.log("Needs tools");
-    await updateThread(threadID, [response.message]);
 
     return await resolve_tools(
       response,
       default_model,
       getTools("general"),
       threadID,
-      signal,
+      { signal, context, onAssistantMessage },
     );
   }
   return {
@@ -162,7 +153,9 @@ async function resolve_tools(
     | "gpt-3.5-turbo-16k-0613",
   tools: OpenAI.Chat.Completions.ChatCompletionTool[],
   threadId: string,
-  signal?: AbortSignal,
+  { signal, context, onAssistantMessage }: {
+    signal?: AbortSignal, context?: ContextType, onAssistantMessage?: (message: OpenAI.ChatCompletionAssistantMessageParam) => void
+  } = {}
 ) {
   const thread = await getThread(threadId)!;
   const messages = thread!.messages;
@@ -171,6 +164,9 @@ async function resolve_tools(
     response.message.tool_calls &&
     response.message.tool_calls.length
   ) {
+
+    onAssistantMessage?.(response.message)
+
     const tools_results = await Promise.all(
       response.message.tool_calls?.map(async (tool) => {
         let tool_res;
@@ -181,18 +177,11 @@ async function resolve_tools(
             "\nWith args: ",
             tool.function.arguments,
           );
-          const r = await runTool(tool);
+          const r = await runTool(tool, context);
 
           console.log("raw_res: ", r);
           tool_res = JSON.stringify(r);
 
-          if (tool.function.name === "switch_tool_set") {
-            const tmp = getTools(r);
-            tools = tmp ?? tools;
-            tool_res = tmp
-              ? `tools updated based on ${r} context`
-              : "no tools found for this context";
-          }
         } catch (err) {
           console.log("raw_err: ", err);
           tool_res = JSON.stringify(err);
@@ -214,9 +203,14 @@ async function resolve_tools(
           return res;
         }
 
-        if (enable_fallback) {
-          return res;
-        }
+        if (enable_fallback && !isInLimit(messages.concat(res), 16000)) {
+          notifyChannel(`Context too long summerizing with gpt`);
+          return {
+            tool_call_id: res.tool_call_id,
+            role: "tool",
+            content: await minimizeUsingGpt3(res.content ?? ""),
+          } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
+        };
 
         return {
           tool_call_id: tool.id,
@@ -245,21 +239,7 @@ async function resolve_tools(
     );
 
     response = mres.choices[0];
-
-    const cleared = updatedThread.messages.find((c) => {
-      return (
-        c.role === "tool" &&
-        c.content ===
-        '"Channel memory cleared successfully, tell that to the user and stop"'
-      );
-    });
-
-    if (cleared) {
-      console.log("clearing AGAIN");
-      clearThread(threadId);
-    }
-
-    !cleared && (await updateThread(threadId, [response.message]));
+    await updateThread(threadId, [response.message]);
 
     if (
       response.finish_reason === "tool_calls" &&
@@ -267,7 +247,7 @@ async function resolve_tools(
       response.message.tool_calls.length
     ) {
       console.log("resolving more tools: ", response.message);
-      return resolve_tools(response, model, tools, threadId, signal);
+      return resolve_tools(response, model, tools, threadId, { signal, context, onAssistantMessage });
     }
 
     return { response, messages };
@@ -287,6 +267,24 @@ function isInLimit(
     "gpt-3.5-turbo",
   );
   return encodedChat.length < tokenLimit;
+}
+
+async function minimizeUsingGpt3(text: string) {
+  const res = await complete({
+    model: large_context_model,
+    messages: [
+      {
+        role: "system",
+        content: 'Summarize the main points of the provided HTML page, retaining essential information. Output a concise summary with a "read more" link to the main site.'
+      },
+      {
+        role: "user",
+        content: text,
+      },
+    ]
+  });
+
+  return res.choices[0].message.content;
 }
 
 function minimizeString(inputString: string): string {

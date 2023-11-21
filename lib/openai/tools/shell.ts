@@ -1,10 +1,13 @@
+import { notifyChannel } from "@/interfaces/discord";
 import { $ } from "zx";
 
 export async function shell({ commandString }: { commandString: string }) {
   try {
-    const res = await $`sh -c ${commandString}`;
+    notifyChannel(`Running command: ${commandString}`,);
+    const res = await $`cd ~/ && sh -c ${commandString}`;
     return res.stdout.toString() || "Command ran successfully";
   } catch (e: any) {
+    notifyChannel(`Command failed to run: ${commandString}`,);
     return e.stderr.toString() || "Command failed to run";
   }
 }

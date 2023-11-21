@@ -7,6 +7,7 @@ import {
   UserContextMenuCommandInteraction,
   Message,
 } from "discord.js";
+import { notifyChannel } from "..";
 
 const command = new SlashCommandBuilder()
   .setName("chat")
@@ -37,6 +38,8 @@ export const OpenAiCommand = {
     }
 
     const controller = new AbortController();
+    const stopTyping = handleTyping(message);
+
     try {
       pending.push({ id: message.channelId, controller });
       const meta = {
@@ -47,20 +50,35 @@ export const OpenAiCommand = {
           interface: "discord",
         },
       };
-      const stopTyping = handleTyping(message);
       const res = await ai(
-        `${message.content}\n${JSON.stringify(meta)}`,
+        `${message.content}`,
         message.channelId,
-        controller.signal,
+        {
+          signal: controller.signal, context: {
+            user: message.author.username,
+            channel_id: message.channelId,
+            meta
+          },
+          onAssistantMessage: (mess) => {
+            console.log("assistant message", mess);
+            // mess.content && message.channel.send({ content: mess.content, allowedMentions: { repliedUser: false } });
+          }
+        },
       );
       stopTyping();
-      message.channel.send(
-        res?.response.message.content ??
-        `Something went wrong: ${JSON.stringify(res?.response)}`,
-      );
+      if (!res?.response.message.content) {
+        notifyChannel(`Something went wrong: ${JSON.stringify(res?.response)}`)
+      } else {
+        message.channel.send(
+          res?.response.message.content
+        );
+      }
+
       pending = pending.filter((c) => c.id !== message.channelId);
     } catch (err) {
-      message.channel.send(`Something went wrong: ${String(err)}`);
+
+      stopTyping();
+      notifyChannel(`Something went wrong: ${String(err)}`);
       if (controller.signal.aborted) {
         console.log(`Something went wrong: ${String(err)}`);
       } else {

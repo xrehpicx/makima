@@ -94,6 +94,10 @@ export function notifyChannel(
   }
 }
 
+export function getClient() {
+  return client;
+}
+
 export async function setup_discord() {
   await client.login(token);
   notifyChannel("Makima restarted");
