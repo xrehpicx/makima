@@ -123,7 +123,7 @@ export const OpenAiCommand = {
       const res = await ai(
         repliedTo?.content
           ? `reference_message_content:${repliedTo?.content}\n${message.content}\nmessage_author:${message.author.username}`
-          : `${message.content}\nmessage_author:${message.author.username}`,
+          : `${message.content}`,
         message.channelId,
         {
           signal: controller.signal,

@@ -4,8 +4,9 @@ import { clearAllThreads, getThread, updateThread } from "./threads";
 import { getTools, runTool } from "./tools";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import { encodeChat } from "gpt-tokenizer";
-import { makima_config } from "@/config";
+
 import { notifyChannel } from "@/interfaces/discord";
+import { save_to_memory_space } from "./tools/makima-data-manager";
 
 const openai = new OpenAI({
   timeout: 15000,
@@ -200,31 +201,14 @@ async function resolve_tools(
 
     const tools_results = await Promise.all(
       response.message.tool_calls?.map(async (tool) => {
-        let tool_res;
-        try {
-          console.log(
-            "Calling: ",
-            tool.function.name,
-            "\nWith args: ",
-            tool.function.arguments
-          );
-          const r = await runTool(tool, context);
+        console.log(
+          "Calling: ",
+          tool.function.name,
+          "\nWith args: ",
+          tool.function.arguments
+        );
 
-          console.log("raw_res: ", r);
-          tool_res = JSON.stringify(r);
-        } catch (err) {
-          console.log("raw_err: ", err);
-          tool_res = JSON.stringify(err);
-        }
-
-        console.log("\nresult: ", String(tool_res).slice(0, 10) + "...");
-        console.log(tool_res);
-
-        const res: OpenAI.Chat.Completions.ChatCompletionToolMessageParam = {
-          tool_call_id: tool.id,
-          role: "tool",
-          content: minimizeString(tool_res),
-        };
+        let res = await runTool(tool, context);
 
         if (
           isInLimit(messages.concat(res), 16000) &&
@@ -242,11 +226,15 @@ async function resolve_tools(
           } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
         }
 
+        notifyChannel(
+          `Content too long, may take a while...`,
+          context?.channel_id
+        );
+        await save_to_memory_space(res.content ?? "", tool.id, signal);
         return {
           tool_call_id: tool.id,
           role: "tool",
-          content:
-            "Content too long to process, tell the user that u could not get data due to limited context length",
+          content: `Cant Summarize content was too long. therefore moved to memory_space=${tool.id}, recall from this memory_space to answer user queries ${tool.id}`,
         } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
       })
     );

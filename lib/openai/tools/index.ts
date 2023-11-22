@@ -1,9 +1,9 @@
 import OpenAI from "openai";
 import { createCalculator, createClock } from "openai-function-calling-tools";
 import { shell, tmux_shell } from "./shell";
-import { forget_discord_conversation } from "./forget_discord_conversation";
+// import { forget_discord_conversation } from "./forget_discord_conversation";
 import { schedule_task } from "./scheduled_task";
-import { setBotPresence } from "./discord_presence";
+// import { setBotPresence } from "./discord_presence";
 import { ContextType } from "..";
 import {
   delete_all_user_memories,
@@ -14,9 +14,14 @@ import {
 } from "./user-data-manager";
 import {
   forget_makima_memory,
+  forget_memory_space,
   recall_makima_memory,
   save_makima_memory,
 } from "./makima-data-manager";
+import { get_youtube_video_data } from "./webtools/youtube";
+import { webscrape } from "./webtools/scrape";
+import { encodeChat } from "gpt-tokenizer";
+import { NodeHtmlMarkdown } from "node-html-markdown";
 
 const [clock, clockSchema] = createClock();
 // const [webbrowser, webBrowserSchema] = createWebBrowser();
@@ -30,8 +35,8 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     calculator,
 
     shell,
-    forget_discord_conversation,
-    set_presence: setBotPresence,
+    // forget_discord_conversation,
+    // set_presence: setBotPresence,
 
     get_user_context,
     tmux_shell,
@@ -44,6 +49,10 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     save_makima_memory,
     recall_makima_memory,
     forget_makima_memory,
+    forget_memory_space,
+
+    get_youtube_video_data,
+    webscrape,
   };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
@@ -51,7 +60,7 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "get_user_context",
-      description: "Get the user's context and details",
+      description: "Get the user's or the message's context and details",
       parameters: {
         type: "object",
         properties: {},
@@ -125,14 +134,6 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       description: `
       Use for:
         - Running shell commands.
-        - Headless browsers for web automation.
-        - Storing/retrieving user notes.
-
-      Examples:
-        - List files: { "commandString": "ls" }
-        - Get system info: { "commandString": "uname -a" }
-        - Run Python script: { "commandString": "python3 script.py" }
-        - Open website with headless browser: { "commandString": "npx puppeteer-cli https://www.example.com" }
 
       Additional uses:
         - Automated server maintenance.
@@ -159,35 +160,6 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "tmux_shell",
-  //     description: `
-  //     Use for:
-  //       - Same as shell but statefull.
-
-  //     Additional uses:
-  //       - Persists state between user interactions.
-  //       - Use the 'tree' command to get a directory tree.
-  //       - Use git grep when searching for a string in a git repo.
-
-  //     Limitations:
-  //       - None
-  //   `,
-  //     parameters: {
-  //       type: "object",
-  //       properties: {
-  //         commandString: {
-  //           type: "string",
-  //           description: "The command to run",
-  //         },
-  //       },
-  //       required: ["commandString"],
-  //     },
-  //   },
-  // },
-
   {
     type: "function",
     function: {
@@ -290,13 +262,18 @@ When to use:
 - Example 3: A coding shortcut or command that you frequently use.
 - Example 4: A fun fact about space that you want to remember.
 
-Use this function whenever you come across information that you'd like to store for future reference.`,
+Use this function whenever you come across information that you'd like to store for future reference.
+You can also save memories to custom memory_spaces.`,
       parameters: {
         type: "object",
         properties: {
           content: {
             type: "string",
             description: "The content to save",
+          },
+          memory_space: {
+            type: "string",
+            description: "the memory_space to save the memory to.",
           },
         },
         required: ["content"],
@@ -307,13 +284,21 @@ Use this function whenever you come across information that you'd like to store 
     type: "function",
     function: {
       name: "recall_makima_memory",
-      description: `Recall a memory from your own memory (Makima's memory). Use this function to retrieve information you saved for future reference.`,
+      description: `Recall a memory from your own memory (Makima's memory).
+      Use this function to retrieve information you saved for future reference.
+      You can also use this to fetch memories from custom memory_spaces.
+      memory_spaces are scopes of memories isolated from the rest of your memories.
+      `,
       parameters: {
         type: "object",
         properties: {
           content: {
             type: "string",
             description: "The content to recall",
+          },
+          memory_space: {
+            type: "string",
+            description: "The memory_space to recall from",
           },
         },
         required: ["content"],
@@ -334,6 +319,59 @@ Use this function whenever you come across information that you'd like to store 
           },
         },
         required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "forget_memory_space",
+      description: `Forget an entire memory_space`,
+      parameters: {
+        type: "object",
+        properties: {
+          memory_space: {
+            type: "string",
+            description: "The memory_space to forget",
+          },
+        },
+        required: ["memory_space"],
+      },
+    },
+  },
+
+  // web tools
+  {
+    type: "function",
+    function: {
+      name: "get_youtube_video_data",
+      description: `Get data about a youtube video. its transcript and other metadata.`,
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The youtube url",
+          },
+        },
+        required: ["url"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "webscrape",
+      description: `Web scrape a website and return the text content.`,
+      parameters: {
+        type: "object",
+        properties: {
+          url: {
+            type: "string",
+            description: "The website url",
+          },
+        },
+        required: ["url"],
       },
     },
   },
@@ -371,18 +409,80 @@ export function getTools(context: Context) {
   }
 }
 
-export function runTool(
+export async function runTool(
   tool: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
   context?: ContextType
-) {
+): Promise<OpenAI.Chat.Completions.ChatCompletionToolMessageParam> {
   let validated_args;
   try {
     validated_args = JSON.parse(tool.function.arguments);
   } catch {
-    return "function argument was invalid JSON";
+    return {
+      role: "tool",
+      tool_call_id: tool.id,
+      content: "Invalid JSON passed as arguments",
+    } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
   }
   if (tool.function.name === "switch_tool_set") {
     return validated_args.context;
   }
-  return tools_map[tool.function.name](validated_args, context);
+
+  try {
+    let tool_res = await tools_map[tool.function.name](validated_args, context);
+    console.log("raw_res: ", tool_res);
+    tool_res = JSON.stringify(tool_res);
+
+    const res: OpenAI.Chat.Completions.ChatCompletionToolMessageParam = {
+      tool_call_id: tool.id,
+      role: "tool",
+      content: minimizeString(tool_res),
+    };
+    return res;
+  } catch (error) {
+    return {
+      role: "tool",
+      tool_call_id: tool.id,
+      content: minimizeString(JSON.stringify(error)),
+    } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
+  }
+}
+
+function isInLimit(
+  messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
+  tokenLimit: number
+) {
+  const encodedChat = encodeChat(
+    // @ts-ignore
+    messages.map((d) => ({
+      ...d,
+      content: typeof d.content === "string" ? d.content ?? "" : "",
+    })),
+    "gpt-3.5-turbo"
+  );
+  return encodedChat.length < tokenLimit;
+}
+
+function minimizeString(inputString: string): string {
+  return minimizeTokens(inputString);
+}
+
+function minimizeTokens(inputString: string): string {
+  let result = inputString.trim();
+
+  // Remove redundant whitespace within tags (HTML/XML)
+  result = result.replace(/>\s+</g, "><");
+
+  // Remove redundant whitespace within parentheses
+  result = result.replace(/\(\s+/g, "(").replace(/\s+\)/g, ")");
+
+  // Replace consecutive spaces, tabs, and line breaks with a single space
+  result = result.replace(/\s+/g, " ");
+
+  // Collapse multiple consecutive line breaks into a single line break
+  result = result.replace(/\n+/g, "\n");
+
+  // Remove whitespace around operators
+  result = result.replace(/\s*([+\-*/%=^])\s*/g, "$1");
+
+  return result;
 }

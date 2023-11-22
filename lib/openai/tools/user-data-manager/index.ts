@@ -4,15 +4,15 @@ import { OllamaEmbeddings } from "langchain/embeddings/ollama";
 import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
-const embeddings = new OllamaEmbeddings({ model: "mistral" });
+
+const embeddings = new OllamaEmbeddings({
+  model: "llama2-uncensored:7b-chat-q2_K",
+});
 
 export function get_user_context({}, context?: ContextType) {
   if (!context) return "No context available for this user";
   return JSON.stringify(context);
 }
-
-// const resultOne = await vectorStore.similaritySearch("hello world", 1);
-// console.log(resultOne);
 
 export async function save_user_memory(
   { content }: { content: string },

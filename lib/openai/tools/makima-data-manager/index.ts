@@ -4,13 +4,57 @@ import { OllamaEmbeddings } from "langchain/embeddings/ollama";
 import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
-const embeddings = new OllamaEmbeddings({ model: "mistral" });
+import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+
+const embeddings = new OllamaEmbeddings({
+  model: "llama2-uncensored:7b-chat-q2_K",
+  requestOptions: {
+    embeddingOnly: true,
+  },
+  maxRetries: 1,
+  maxConcurrency: 1,
+});
+
+const splitter = new RecursiveCharacterTextSplitter({
+  chunkSize: 10,
+  chunkOverlap: 2,
+});
+
+export async function save_to_memory_space(
+  content: string,
+  memory_space: string,
+  signal?: AbortSignal
+) {
+  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const docs = await splitter.createDocuments([content]);
+
+  const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
+
+  if (!exists) {
+    notifyChannel(`New memory space: ${memory_space}`);
+    const tmp = await FaissStore.fromDocuments(docs, embeddings);
+    await tmp.save(embeddingsDirectory);
+    console.log(
+      "This is a temp memory space, saved:",
+      content.slice(0, 100),
+      "to memory"
+    );
+    return memory_space;
+  }
+  notifyChannel(`Adding to space: ${memory_space}`);
+  const vecStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  await vecStore.addDocuments(docs);
+  await vecStore.save(embeddingsDirectory);
+  console.log("Saved:", content.slice(0, 100), "to memory");
+  notifyChannel(`Saved to space: ${memory_space}`);
+  return memory_space;
+}
 
 export async function save_makima_memory(
-  { content }: { content: string },
+  { content, memory_space }: { content: string; memory_space?: string },
   context?: ContextType
 ) {
-  const memory_space = "makima";
+  memory_space = memory_space || "makima";
 
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
 
@@ -75,10 +119,10 @@ export async function save_makima_memory(
 }
 
 export async function recall_makima_memory(
-  { content }: { content: string },
+  { content, memory_space }: { content: string; memory_space?: string },
   context?: ContextType
 ) {
-  const memory_space = "makima";
+  memory_space = memory_space || "makima";
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -122,6 +166,28 @@ export async function forget_makima_memory(
     notifyChannel(`Memory forgotten: ${resultOne[0].pageContent}`);
     console.log("Memory forgotten");
     return "Memory forgotten";
+  } catch (error) {
+    notifyChannel(`Error forgetting memory: ${error}`);
+    console.log("Error forgetting memory:", error);
+    return `Error forgetting memory: ${error}`;
+  }
+}
+
+export async function forget_memory_space(
+  { memory_space }: { memory_space: string },
+  context?: ContextType
+) {
+  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
+
+  if (!exists) {
+    return "This memory space is already empty";
+  }
+
+  try {
+    await fs.rm(embeddingsDirectory, { recursive: true });
+    notifyChannel(`Memory forgotten: ${memory_space}`);
+    return "Memory space cleared";
   } catch (error) {
     notifyChannel(`Error forgetting memory: ${error}`);
     console.log("Error forgetting memory:", error);

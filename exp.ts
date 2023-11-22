@@ -1,29 +1,29 @@
-import { OllamaEmbeddings } from "langchain/embeddings/ollama";
-import { FaissStore } from "langchain/vectorstores/faiss";
-import fs from "fs/promises";
+import { encode } from "gpt-tokenizer";
 
-const embeddings = new OllamaEmbeddings({ model: "orca-mini" });
+import { Ollama } from "langchain/llms/ollama";
+import { YoutubeLoader } from "langchain/document_loaders/web/youtube";
+const loader = YoutubeLoader.createFromUrl("https://youtu.be/bZQun8Y4L2A", {
+  language: "en",
+  addVideoInfo: true,
+});
+const ollama = new Ollama({
+  model: "llama2-uncensored:7b-chat-q2_K",
+});
 
-const embeddingsDirectory = `testembeddings`;
-const exists = await fs.exists(`${embeddingsDirectory}/args.json`);
+const docs = await loader.load();
 
-if (!exists) {
-  const tmp = await FaissStore.fromDocuments(
-    [
-      { pageContent: "important number is 42", metadata: { id: "1" } },
-      { pageContent: "unimportant number is 43", metadata: { id: "2" } },
-      { pageContent: "very very useless number is 43", metadata: { id: "3" } },
-    ],
-    embeddings
-  );
-  await tmp.save(embeddingsDirectory);
+console.log("fetched");
+// Streaming translation from English to German
+const stream = await ollama.stream(
+  `Summarize the below:\n ${docs[0].pageContent}`
+);
+
+const chunks = [];
+for await (const chunk of stream) {
+  process.stdout.write(chunk);
 }
 
-const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+console.log("done");
 
-const resultOne = await vectorStore.similaritySearch("important number", 1);
-
-console.log(resultOne);
-
-// forget
-// vectorStore.delete({ id: resultOne[0].metadata.id });
+const op = encode(docs[0].pageContent, {});
+console.log(op.length);
