@@ -11,14 +11,13 @@ const openai = new OpenAI({
   timeout: 15000,
 });
 
-
 const default_model = "gpt-3.5-turbo-1106";
 const large_context_model = "gpt-4-1106-preview";
 const enable_fallback = false;
 
 function complete(
   body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
-  options?: OpenAI.RequestOptions<Record<string, unknown> | Readable>,
+  options?: OpenAI.RequestOptions<Record<string, unknown> | Readable>
 ) {
   console.log("Completion is begin called");
   const default_options: OpenAI.RequestOptions<
@@ -37,7 +36,7 @@ function complete(
 // Use async/await instead of then
 export async function testOpenAI() {
   try {
-    await clearAllThreads()
+    await clearAllThreads();
     // await clearThread("test");
     console.log("testing");
     const res = await ai("Whats the time", "test");
@@ -54,7 +53,7 @@ const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
     content: `You are Makima, Director of Public Safety in Japan, and a devil in human form. A master manipulator, you command supernatural forces and possess unparalleled expertise in Ubuntu.
 
 Respond to greetings with something concise and ominous.
-Answer simple questions like "What's the time?" with an ominous response along with the actual time information.
+Never withhold information directly asked from the user.
 
 Your mission is to assist the user with any task using your Ubuntu prowess. Keep your responses brief.
 Main ubuntu tools: docker (for checking service statuses), curl (for web scraping), find & grep (to look through files for additional context), etc
@@ -62,18 +61,30 @@ timezone: India/Asia/Kolkata
 time_format: 12hr
 units: metric system
 `,
-  }
+  },
 ];
 
 export type ContextType = {
-  user: string,
-  channel_id: string,
-  meta: Record<string, any>
-}
+  user: string;
+  channel_id: string;
+  meta: Record<string, any>;
+};
 
-export async function ai(text: string, threadID: string, { signal, context, onAssistantMessage }: {
-  signal?: AbortSignal, context?: ContextType, onAssistantMessage?: (message: OpenAI.ChatCompletionAssistantMessageParam) => void
-} = {}) {
+export async function ai(
+  text: string,
+  threadID: string,
+  {
+    signal,
+    context,
+    onAssistantMessage,
+  }: {
+    signal?: AbortSignal;
+    context?: ContextType;
+    onAssistantMessage?: (
+      message: OpenAI.ChatCompletionAssistantMessageParam
+    ) => void;
+  } = {}
+) {
   const userMessage: OpenAI.ChatCompletionMessageParam = {
     role: "user",
     content: text,
@@ -84,15 +95,27 @@ export async function ai(text: string, threadID: string, { signal, context, onAs
 
   let thread;
   if (tmp_thread) {
-    const last_message = tmp_thread?.messages[tmp_thread?.messages.length - 1]
-    if (last_message.role === "assistant" && last_message.tool_calls && last_message.tool_calls.length > 0) {
-      const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] = last_message.tool_calls.map((tool_call) => ({ role: "tool", content: "Tool calling was aborted due to new user input", tool_call_id: tool_call.id }))
-      thread = await updateThread(threadID, [...tool_calls_replies, userMessage], systemPrompts);
+    const last_message = tmp_thread?.messages[tmp_thread?.messages.length - 1];
+    if (
+      last_message.role === "assistant" &&
+      last_message.tool_calls &&
+      last_message.tool_calls.length > 0
+    ) {
+      const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] =
+        last_message.tool_calls.map((tool_call) => ({
+          role: "tool",
+          content: "Tool calling was aborted due to new user input",
+          tool_call_id: tool_call.id,
+        }));
+      thread = await updateThread(
+        threadID,
+        [...tool_calls_replies, userMessage],
+        systemPrompts
+      );
     }
   }
 
   thread = await updateThread(threadID, [userMessage], systemPrompts);
-
 
   const inLimit = isInLimit(thread.messages, 16000);
   if (enable_fallback && !inLimit) {
@@ -101,7 +124,7 @@ export async function ai(text: string, threadID: string, { signal, context, onAs
     model = large_context_model;
   } else if (!inLimit) {
     throw new Error(
-      "Context too long, enable fallback to larger context model or run /clear command",
+      "Context too long, enable fallback to larger context model or run /clear command"
     );
   }
 
@@ -110,9 +133,8 @@ export async function ai(text: string, threadID: string, { signal, context, onAs
       model,
       messages: thread.messages,
       tools: getTools("general"),
-
     },
-    { signal },
+    { signal }
   );
 
   const response = res.choices[0];
@@ -126,7 +148,7 @@ export async function ai(text: string, threadID: string, { signal, context, onAs
       default_model,
       getTools("general"),
       threadID,
-      { signal, context, onAssistantMessage },
+      { signal, context, onAssistantMessage }
     );
   }
   return {
@@ -154,8 +176,16 @@ async function resolve_tools(
     | "gpt-3.5-turbo-16k-0613",
   tools: OpenAI.Chat.Completions.ChatCompletionTool[],
   threadId: string,
-  { signal, context, onAssistantMessage }: {
-    signal?: AbortSignal, context?: ContextType, onAssistantMessage?: (message: OpenAI.ChatCompletionAssistantMessageParam) => void
+  {
+    signal,
+    context,
+    onAssistantMessage,
+  }: {
+    signal?: AbortSignal;
+    context?: ContextType;
+    onAssistantMessage?: (
+      message: OpenAI.ChatCompletionAssistantMessageParam
+    ) => void;
   } = {}
 ) {
   const thread = await getThread(threadId)!;
@@ -165,8 +195,7 @@ async function resolve_tools(
     response.message.tool_calls &&
     response.message.tool_calls.length
   ) {
-
-    onAssistantMessage?.(response.message)
+    onAssistantMessage?.(response.message);
 
     const tools_results = await Promise.all(
       response.message.tool_calls?.map(async (tool) => {
@@ -176,13 +205,12 @@ async function resolve_tools(
             "Calling: ",
             tool.function.name,
             "\nWith args: ",
-            tool.function.arguments,
+            tool.function.arguments
           );
           const r = await runTool(tool, context);
 
           console.log("raw_res: ", r);
           tool_res = JSON.stringify(r);
-
         } catch (err) {
           console.log("raw_err: ", err);
           tool_res = JSON.stringify(err);
@@ -211,7 +239,7 @@ async function resolve_tools(
             role: "tool",
             content: await minimizeUsingGpt3(res.content ?? ""),
           } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
-        };
+        }
 
         return {
           tool_call_id: tool.id,
@@ -219,7 +247,7 @@ async function resolve_tools(
           content:
             "Content too long to process, tell the user that u could not get data due to limited context length",
         } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
-      }),
+      })
     );
 
     const updatedThread = await updateThread(threadId, tools_results);
@@ -236,7 +264,7 @@ async function resolve_tools(
         tools,
         messages: updatedThread.messages,
       },
-      { signal },
+      { signal }
     );
 
     response = mres.choices[0];
@@ -248,7 +276,11 @@ async function resolve_tools(
       response.message.tool_calls.length
     ) {
       console.log("resolving more tools: ", response.message);
-      return resolve_tools(response, model, tools, threadId, { signal, context, onAssistantMessage });
+      return resolve_tools(response, model, tools, threadId, {
+        signal,
+        context,
+        onAssistantMessage,
+      });
     }
 
     return { response, messages };
@@ -257,7 +289,7 @@ async function resolve_tools(
 
 function isInLimit(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
-  tokenLimit: number,
+  tokenLimit: number
 ) {
   const encodedChat = encodeChat(
     // @ts-ignore
@@ -265,7 +297,7 @@ function isInLimit(
       ...d,
       content: typeof d.content === "string" ? d.content ?? "" : "",
     })),
-    "gpt-3.5-turbo",
+    "gpt-3.5-turbo"
   );
   return encodedChat.length < tokenLimit;
 }
@@ -276,13 +308,14 @@ async function minimizeUsingGpt3(text: string) {
     messages: [
       {
         role: "system",
-        content: 'Summarize the main points of the provided HTML page, retaining essential information. Output a concise summary with a "read more" link to the main site.'
+        content:
+          'Summarize the main points of the provided HTML page, retaining essential information. Output a concise summary with a "read more" link to the main site.',
       },
       {
         role: "user",
         content: text,
       },
-    ]
+    ],
   });
 
   return res.choices[0].message.content;

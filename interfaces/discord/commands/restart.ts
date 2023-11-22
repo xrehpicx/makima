@@ -17,7 +17,7 @@ export const RestartCommand = {
     interaction:
       | ChatInputCommandInteraction<CacheType>
       | MessageContextMenuCommandInteraction<CacheType>
-      | UserContextMenuCommandInteraction<CacheType>,
+      | UserContextMenuCommandInteraction<CacheType>
   ) {
     console.log("running restart command");
     await interaction.deferReply({ ephemeral: true });
@@ -27,7 +27,7 @@ export const RestartCommand = {
       !(
         !Array.isArray(interaction.member?.roles) &&
         interaction.member?.roles.cache.find(
-          (r) => r.name === "kin-dev" || r.name === "tokio",
+          (r) => r.name === "kin-dev" || r.name === "tokio"
         )
       )
     ) {

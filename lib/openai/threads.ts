@@ -27,7 +27,7 @@ async function readThreadsFromFile(): Promise<
 
 // Function to write threads to file
 async function writeThreadsToFile(
-  threads: Record<string, ChatCompletionMessageParam[]>,
+  threads: Record<string, ChatCompletionMessageParam[]>
 ): Promise<void> {
   const data = JSON.stringify(threads, null, 2);
   await fs.writeFile(threadsFilePath, data, "utf-8");
@@ -37,7 +37,7 @@ async function writeThreadsToFile(
 export async function updateThread(
   threadId: string,
   messages: ChatCompletionMessageParam[],
-  onCreateMessages: ChatCompletionMessageParam[] = [],
+  onCreateMessages: ChatCompletionMessageParam[] = []
 ): Promise<ConversationThread> {
   const allMessages = [...onCreateMessages, ...messages];
   let threads = await readThreadsFromFile();
@@ -87,7 +87,7 @@ export async function clearAllThreads() {
 
 // Function to get a thread by ID
 export async function getThread(
-  threadId: string,
+  threadId: string
 ): Promise<ConversationThread | undefined> {
   const threads = await readThreadsFromFile();
   const messages = threads[threadId];

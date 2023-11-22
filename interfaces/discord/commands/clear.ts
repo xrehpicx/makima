@@ -18,7 +18,7 @@ export const ClearConvoCommand = {
     interaction:
       | ChatInputCommandInteraction<CacheType>
       | MessageContextMenuCommandInteraction<CacheType>
-      | UserContextMenuCommandInteraction<CacheType>,
+      | UserContextMenuCommandInteraction<CacheType>
   ) {
     console.log("running restart command");
     await interaction.deferReply({ ephemeral: true });

@@ -1,33 +1,58 @@
 import OpenAI from "openai";
-import { createCalculator, createClock, createRequest, createWebBrowser } from "openai-function-calling-tools";
-import { shell } from "./shell";
+import { createCalculator, createClock } from "openai-function-calling-tools";
+import {
+  forget_user_memory,
+  recall_memory,
+  shell,
+  store_memory,
+  tmux_shell,
+} from "./shell";
 import { forget_discord_conversation } from "./forget_discord_conversation";
 import { schedule_task } from "./scheduled_task";
 import { setBotPresence } from "./discord_presence";
 import { ContextType } from "..";
+import { get_user_context } from "./user-data-manager";
 
 const [clock, clockSchema] = createClock();
-const [webbrowser, webBrowserSchema] = createWebBrowser();
+// const [webbrowser, webBrowserSchema] = createWebBrowser();
 const [calculator, calculatorSchema] = createCalculator();
-const [request, requestSchema] = createRequest();
+// const [request, requestSchema] = createRequest();
 
-export const tools_map: Record<string, (p: any, context?: ContextType) => any> = {
-  schedule_task,
-  clock,
-  calculator,
-  webbrowser,
-  shell,
-  forget_discord_conversation,
-  set_presence: setBotPresence,
-  request
-};
+export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
+  {
+    schedule_task,
+    clock,
+    calculator,
+
+    shell,
+    forget_discord_conversation,
+    set_presence: setBotPresence,
+
+    get_user_context,
+    tmux_shell,
+    store_memory,
+    recall_memory,
+    forget_user_memory,
+  };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
   {
-    "type": "function",
-    "function": {
-      "name": "schedule_task",
-      "description": `Schedule a task by telling it what to message the user at the required time. 
+    type: "function",
+    function: {
+      name: "get_user_context",
+      description: "Get the user's context and details",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "schedule_task",
+      description: `Schedule a task by telling it what to message the user at the required time. 
       Always check the time before running the task.
       'Reply with' is a special instruction that will reply to the user with the given message use this for all reminder use cases!.
       Example 1:
@@ -47,24 +72,23 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       task: { instruction: "Reply with 'You need to submit the report right now!'", time: "2023-11-21T15:00:00" }
       
     `,
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "instruction": {
-            "type": "string",
-            "description": "The instruction to the AI for the scheduled task"
+      parameters: {
+        type: "object",
+        properties: {
+          instruction: {
+            type: "string",
+            description: "The instruction to the AI for the scheduled task",
           },
-          "time": {
-            "type": "string",
-            "format": "iso-time",
-            "description": "The ISO time string for scheduling the task"
-          }
+          time: {
+            type: "string",
+            format: "iso-time",
+            description: "The ISO time string for scheduling the task",
+          },
         },
-        "required": ["instruction", "time"]
-      }
-    }
+        required: ["instruction", "time"],
+      },
+    },
   },
-
 
   {
     type: "function",
@@ -80,13 +104,9 @@ export const tools: OpenAI.ChatCompletionTool[] = [
         - Converting between units.
         - Calculating time differences.
         - Calculating time in different timezones.
-      `
+      `,
     } as OpenAI.FunctionDefinition,
   },
-  // {
-  //   type: "function",
-  //   function: webBrowserSchema as OpenAI.FunctionDefinition,
-  // },
   {
     type: "function",
     function: {
@@ -107,6 +127,8 @@ export const tools: OpenAI.ChatCompletionTool[] = [
         - Automated server maintenance.
         - Collecting system logs and metrics.
         - Fetching real-time data.
+        - Use the 'tree' command to get a directory tree.
+        - Use git grep when searching for a string in a git repo.
 
       Limitations:
         - Limited user interaction support.
@@ -128,75 +150,111 @@ export const tools: OpenAI.ChatCompletionTool[] = [
   },
   // {
   //   type: "function",
-  //   function: requestSchema as OpenAI.FunctionDefinition,
-  // },
-
-  // discord tools
-  //   {
-  //     type: "function",
-  //     function: {
-  //       name: "set_presence",
-  //       description: `Can be used to set discord bot presence.
-  // example:
-  // user: set presence to playing with your mind
-  // set_presence: message: "with your mind", type: 0
-  // example 2:
-  // user: set presence to watching you
-  // set_presence: message: "you", type: 3
-  //       `,
-  //       parameters: {
-  //         type: "object",
-  //         properties: {
-  //           message: {
-  //             type: "string",
-  //             description: "The message to set as presence",
-  //           },
-  //           type: {
-  //             type: "number",
-  //             description:
-  //               "The type of the presence  Playing = 0, Streaming = 1, Listening = 2, Watching = 3, Competing = 5",
-  //           },
-  //         },
-  //         required: ["message", "type"],
-  //       },
-  //     },
-  //   },
-  // {
-  //   type: "function",
   //   function: {
-  //     name: "forget_discord_conversation",
-  //     description: "Can be used to forget ongoing discord conversation",
+  //     name: "tmux_shell",
+  //     description: `
+  //     Use for:
+  //       - Same as shell but statefull.
+
+  //     Additional uses:
+  //       - Persists state between user interactions.
+  //       - Use the 'tree' command to get a directory tree.
+  //       - Use git grep when searching for a string in a git repo.
+
+  //     Limitations:
+  //       - None
+  //   `,
   //     parameters: {
   //       type: "object",
   //       properties: {
-  //         channel_id: {
+  //         commandString: {
   //           type: "string",
-  //           description: "discord message's channel_id",
+  //           description: "The command to run",
   //         },
   //       },
-  //       required: ["channel_id"],
+  //       required: ["commandString"],
   //     },
   //   },
   // },
-  //   {
-  //     type: "function",
-  //     function: {
-  //       name: "switch_tool_set",
-  //       description: `Based on user conversation switch contexts from the below list:
-  // context_list:
-  //   - 'discord' # switch to this context when any discord conversation related request is made`,
-  //       parameters: {
-  //         type: "object",
-  //         properties: {
-  //           context: {
-  //             type: "string",
-  //             description: "the context to get functions of",
-  //           },
-  //         },
-  //         required: ["context"],
-  //       },
-  //     },
-  //   },
+
+  {
+    type: "function",
+    function: {
+      name: "set_presence",
+      description: "Can be used to set the bot's presence",
+      parameters: {
+        type: "object",
+        properties: {
+          status: {
+            type: "string",
+            description: "discord message's channel_id",
+          },
+        },
+        required: ["status"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_memory",
+      description:
+        "Retrieve a memory related to the user or context. Use this function to recall information about user preferences, experiences, or any contextually relevant data.",
+      parameters: {
+        type: "object",
+        properties: {
+          term: {
+            type: "string",
+            description: "The search term.",
+          },
+          searchContext: {
+            type: "string",
+            description: "The directory context for the search.",
+          },
+        },
+        required: ["term", "searchContext"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "store_memory",
+      description:
+        "Store a memory related to the user or context. Use this function to store information about user preferences, experiences, or any contextually relevant data.",
+      parameters: {
+        type: "object",
+        properties: {
+          topic: {
+            type: "string",
+            description: "The topic of the memory.",
+          },
+          data: {
+            type: "string",
+            description: "The data to store.",
+          },
+          context_route: {
+            type: "string",
+            description: "The directory context for the memory.",
+          },
+        },
+        required: ["topic", "data", "context_route"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "forget_user_memory",
+      description:
+        "Forget all memories related to the user or context. Use this function to forget information about user preferences, experiences, or any contextually relevant data.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
+      },
+    },
+  },
 ];
 
 const discord_tools: OpenAI.ChatCompletionTool[] = [
@@ -219,7 +277,6 @@ const discord_tools: OpenAI.ChatCompletionTool[] = [
   },
 ];
 
-
 // export const auto_tools
 
 type Context = "general" | "discord";
@@ -233,7 +290,8 @@ export function getTools(context: Context) {
 }
 
 export function runTool(
-  tool: OpenAI.Chat.Completions.ChatCompletionMessageToolCall, context?: ContextType
+  tool: OpenAI.Chat.Completions.ChatCompletionMessageToolCall,
+  context?: ContextType
 ) {
   let validated_args;
   try {

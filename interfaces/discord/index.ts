@@ -84,7 +84,7 @@ client.on("interactionCreate", async (interaction) => {
 
 export function notifyChannel(
   message: string,
-  channelId: string = config.notification_channel,
+  channelId: string = config.notification_channel
 ) {
   const channel = client.channels.cache.find((id) => id.id === channelId);
   if (channel?.isDMBased()) {
