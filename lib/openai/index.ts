@@ -133,6 +133,7 @@ export async function ai(
       model,
       messages: thread.messages,
       tools: getTools("general"),
+      user: context?.user,
     },
     { signal }
   );
@@ -263,6 +264,7 @@ async function resolve_tools(
         model,
         tools,
         messages: updatedThread.messages,
+        user: context?.user,
       },
       { signal }
     );

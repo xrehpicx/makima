@@ -25,15 +25,5 @@ export const ClearConvoCommand = {
 
     clearThread(interaction.channelId);
     interaction.channel?.send("Makima ai memory is cleared");
-    // const messages = await interaction.channel?.messages.fetch();
-    // messages?.forEach((mes) => mes.delete());
-    //
-    // if (messages)
-    //   for (let [_, mes] of messages) {
-    //     if (mes.author.bot) await mes.delete();
-    //   }
-    //
-    // await interaction.editReply("Restarting service");
-    // setTimeout(() => process.exit(0), 1000);
   },
 };

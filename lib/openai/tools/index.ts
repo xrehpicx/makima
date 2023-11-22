@@ -1,17 +1,22 @@
 import OpenAI from "openai";
 import { createCalculator, createClock } from "openai-function-calling-tools";
-import {
-  forget_user_memory,
-  recall_memory,
-  shell,
-  store_memory,
-  tmux_shell,
-} from "./shell";
+import { shell, tmux_shell } from "./shell";
 import { forget_discord_conversation } from "./forget_discord_conversation";
 import { schedule_task } from "./scheduled_task";
 import { setBotPresence } from "./discord_presence";
 import { ContextType } from "..";
-import { get_user_context } from "./user-data-manager";
+import {
+  delete_all_user_memories,
+  forget_user_memory,
+  get_user_context,
+  recall_user_memory,
+  save_user_memory,
+} from "./user-data-manager";
+import {
+  forget_makima_memory,
+  recall_makima_memory,
+  save_makima_memory,
+} from "./makima-data-manager";
 
 const [clock, clockSchema] = createClock();
 // const [webbrowser, webBrowserSchema] = createWebBrowser();
@@ -30,9 +35,15 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
 
     get_user_context,
     tmux_shell,
-    store_memory,
-    recall_memory,
+
+    save_user_memory,
+    recall_user_memory,
     forget_user_memory,
+    delete_all_user_memories,
+
+    save_makima_memory,
+    recall_makima_memory,
+    forget_makima_memory,
   };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
@@ -194,51 +205,45 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
+
+  // memory tools
   {
     type: "function",
     function: {
-      name: "recall_memory",
-      description:
-        "Retrieve a memory related to the user or context. Use this function to recall information about user preferences, experiences, or any contextually relevant data.",
+      name: "save_user_memory",
+      description: `Save user preferences or documents for future reference.
+
+Example:
+- save_user_memory({ content: "user likes color blue" })`,
       parameters: {
         type: "object",
         properties: {
-          term: {
+          content: {
             type: "string",
-            description: "The search term.",
-          },
-          searchContext: {
-            type: "string",
-            description: "The directory context for the search.",
+            description: "The content to save",
           },
         },
-        required: ["term", "searchContext"],
+        required: ["content"],
       },
     },
   },
   {
     type: "function",
     function: {
-      name: "store_memory",
-      description:
-        "Store a memory related to the user or context. Use this function to store information about user preferences, experiences, or any contextually relevant data.",
+      name: "recall_user_memory",
+      description: `Recall a user's preference or information from past conversations. Useful for retrieving remembered details such as user preferences and documented requests.
+Example:
+- User: "What color do I like?"
+- recall_memory({ term: "user likes color" })`,
       parameters: {
         type: "object",
         properties: {
-          topic: {
+          content: {
             type: "string",
-            description: "The topic of the memory.",
-          },
-          data: {
-            type: "string",
-            description: "The data to store.",
-          },
-          context_route: {
-            type: "string",
-            description: "The directory context for the memory.",
+            description: "The content to recall",
           },
         },
-        required: ["topic", "data", "context_route"],
+        required: ["content"],
       },
     },
   },
@@ -246,12 +251,89 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "forget_user_memory",
-      description:
-        "Forget all memories related to the user or context. Use this function to forget information about user preferences, experiences, or any contextually relevant data.",
+      description: "Can be used to forget a memory",
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to forget",
+          },
+        },
+        required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_all_user_memories",
+      description: "Can be used to delete all user memories at once",
       parameters: {
         type: "object",
         properties: {},
         required: [],
+      },
+    },
+  },
+
+  // the bots own memory
+  {
+    type: "function",
+    function: {
+      name: "save_makima_memory",
+      description: `Save memories about general topics and knowledge for your own reference. This is your personal memory, use it to remember things that you find interesting or useful.
+
+When to use:
+- Example 1: Your favorite color is red.
+- Example 2: You learned that the capital of France is Paris.
+- Example 3: A coding shortcut or command that you frequently use.
+- Example 4: A fun fact about space that you want to remember.
+
+Use this function whenever you come across information that you'd like to store for future reference.`,
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to save",
+          },
+        },
+        required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "recall_makima_memory",
+      description: `Recall a memory from your own memory (Makima's memory). Use this function to retrieve information you saved for future reference.`,
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to recall",
+          },
+        },
+        required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "forget_makima_memory",
+      description: `Forget a memory from your own memory (Makima's memory). Use this function to remove information that you no longer need or find relevant.`,
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to forget",
+          },
+        },
+        required: ["content"],
       },
     },
   },

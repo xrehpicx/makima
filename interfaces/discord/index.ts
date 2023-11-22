@@ -34,7 +34,7 @@ if (!clientId) {
   throw new Error("No client id provided");
 }
 
-const commands = [RestartCommand, ClearConvoCommand];
+const commands = [RestartCommand, ClearConvoCommand, OpenAiCommand];
 
 const rest = new REST({ version: "10" }).setToken(token);
 
@@ -63,9 +63,17 @@ client.on("messageCreate", async (message) => {
   const isDm = message.channel?.type === ChannelType.DM;
 
   if (isDm && config.admins.includes(message.author.id)) {
-    setTimeout(() => {
-      OpenAiCommand.message_handler(message);
-    }, 2000);
+    OpenAiCommand.message_handler(message);
+    return;
+  }
+
+  if (
+    !Array.isArray(message.member?.roles) &&
+    (message.member?.roles.cache.find((r) => r.name === "kin-dev") ||
+      message.member?.roles.cache.find((r) => r.name === "makimatester")) &&
+    message.mentions.has(client.user?.id as string)
+  ) {
+    OpenAiCommand.message_handler(message);
     return;
   }
 });

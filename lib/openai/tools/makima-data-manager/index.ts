@@ -6,19 +6,11 @@ import { fs } from "zx";
 import { Document } from "langchain/document";
 const embeddings = new OllamaEmbeddings({ model: "mistral" });
 
-export function get_user_context({}, context?: ContextType) {
-  if (!context) return "No context available for this user";
-  return JSON.stringify(context);
-}
-
-// const resultOne = await vectorStore.similaritySearch("hello world", 1);
-// console.log(resultOne);
-
-export async function save_user_memory(
+export async function save_makima_memory(
   { content }: { content: string },
   context?: ContextType
 ) {
-  const memory_space = context?.channel_id || context?.user || "general";
+  const memory_space = "makima";
 
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
 
@@ -82,11 +74,11 @@ export async function save_user_memory(
   }
 }
 
-export async function recall_user_memory(
+export async function recall_makima_memory(
   { content }: { content: string },
   context?: ContextType
 ) {
-  const memory_space = context?.channel_id || context?.user || "general";
+  const memory_space = "makima";
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -107,13 +99,11 @@ export async function recall_user_memory(
   }\nmeta_data:${JSON.stringify(resultOne[0].metadata)}`;
 }
 
-export async function forget_user_memory(
+export async function forget_makima_memory(
   { content }: { content: string },
   context?: ContextType
 ) {
-  const memory_space = context?.channel_id || context?.user || "general";
-
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${"makima"}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {
@@ -126,15 +116,9 @@ export async function forget_user_memory(
 
     const resultOne = await vectorStore.similaritySearch(content, 1);
 
-    console.log("Forgetting: ", resultOne, resultOne[0].metadata.id);
-    console.log(
-      "IDS: ",
-      resultOne.map((d) => d.metadata.id || String(d.metadata))
-    );
     await vectorStore.delete({
       ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
     });
-
     notifyChannel(`Memory forgotten: ${resultOne[0].pageContent}`);
     console.log("Memory forgotten");
     return "Memory forgotten";
@@ -142,27 +126,5 @@ export async function forget_user_memory(
     notifyChannel(`Error forgetting memory: ${error}`);
     console.log("Error forgetting memory:", error);
     return `Error forgetting memory: ${error}`;
-  }
-}
-
-export async function delete_all_user_memories({}, context?: ContextType) {
-  const memory_space = context?.channel_id || context?.user || "general";
-
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
-  const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
-
-  if (!exists) {
-    console.log("This is a new user, nothing to delete");
-    return "This is a new user, nothing to delete";
-  }
-
-  // delete directory
-  try {
-    await fs.rm(embeddingsDirectory, { recursive: true, force: true });
-    console.log("Deleted all memories");
-    return "Deleted all memories";
-  } catch (error) {
-    console.log("Error deleting memories:", error);
-    return `Error deleting memories: ${error}`;
   }
 }

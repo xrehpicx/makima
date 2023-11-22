@@ -44,54 +44,54 @@ export async function tmux_shell(
 }
 
 // shell function that specialises in accepting data that the user wants to store and stores in path of /home/makima/makima_memory/{username}/{...contexts}/{topic}.md
-export async function store_memory(
-  {
-    topic,
-    context_route,
-    data,
-  }: { topic: string; data: string; context_route: string },
-  context?: ContextType
-) {
-  const username = context?.user || "unknown_user";
-  const channel_id = context?.channel_id || "unknown_channel";
-  // const contexts = context || "unknown_contexts";
-  const path = `/home/makima/makima_memory/${username}/${context_route}/${topic}.md`;
-  try {
-    notifyChannel(`Storing memory: ${topic}`);
-    await $`mkdir -p /home/makima/makima_memory/${username}/${context_route} && echo "${data}" > ${path}`;
-    notifyChannel(`Memory stored successfully and file path: ${path}`);
-    return `Memory stored successfully: ${topic}`;
-  } catch (e: any) {
-    notifyChannel(`Memory failed to store: ${topic}`);
-    return `Failed to store: ${e.stderr.toString()}. Explain user why it failed`;
-  }
-}
+// export async function store_memory(
+//   {
+//     topic,
+//     context_route,
+//     data,
+//   }: { topic: string; data: string; context_route: string },
+//   context?: ContextType
+// ) {
+//   const username = context?.user || "unknown_user";
+//   const channel_id = context?.channel_id || "unknown_channel";
+//   // const contexts = context || "unknown_contexts";
+//   const path = `/home/makima/makima_memory/${username}/${context_route}/${topic}.md`;
+//   try {
+//     notifyChannel(`Storing memory: ${topic}`);
+//     await $`mkdir -p /home/makima/makima_memory/${username}/${context_route} && echo "${data}" > ${path}`;
+//     notifyChannel(`Memory stored successfully and file path: ${path}`);
+//     return `Memory stored successfully: ${topic}`;
+//   } catch (e: any) {
+//     notifyChannel(`Memory failed to store: ${topic}`);
+//     return `Failed to store: ${e.stderr.toString()}. Explain user why it failed`;
+//   }
+// }
 
-export async function recall_memory(
-  { term, searchContext }: { term: string; searchContext: string },
-  context?: ContextType
-) {
-  const username = context?.user || "unknown_user";
+// export async function recall_memory(
+//   { term, searchContext }: { term: string; searchContext: string },
+//   context?: ContextType
+// ) {
+//   const username = context?.user || "unknown_user";
 
-  const res = fuzzySearchDirectory(
-    term,
-    `/home/makima/makima_memory/${username}/`,
-    searchContext
-  );
+//   const res = fuzzySearchDirectory(
+//     term,
+//     `/home/makima/makima_memory/${username}/`,
+//     searchContext
+//   );
 
-  if (!res) {
-    return `No memories found for ${term} in ${searchContext}`;
-  }
-  return `Found memories for ${term} in ${searchContext}: ${res}`;
-}
+//   if (!res) {
+//     return `No memories found for ${term} in ${searchContext}`;
+//   }
+//   return `Found memories for ${term} in ${searchContext}: ${res}`;
+// }
 
-export async function forget_user_memory({}: {}, context?: ContextType) {
-  const username = context?.user;
+// export async function forget_user_memory({}: {}, context?: ContextType) {
+//   const username = context?.user;
 
-  if (!username) {
-    return "No user found";
-  }
+//   if (!username) {
+//     return "No user found";
+//   }
 
-  const res = await $`rm -rf /home/makima/makima_memory/${username}`;
-  return res.stdout.toString();
-}
+//   const res = await $`rm -rf /home/makima/makima_memory/${username}`;
+//   return res.stdout.toString();
+// }
