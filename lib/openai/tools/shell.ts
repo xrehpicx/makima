@@ -1,9 +1,16 @@
 import { notifyChannel } from "@/interfaces/discord";
 import { $ } from "zx";
 import { ContextType } from "..";
-import { fuzzySearchDirectory } from "../utils";
 
-export async function shell({ commandString }: { commandString: string }) {
+import { makima_config } from "@/config";
+
+export async function shell(
+  { commandString }: { commandString: string },
+  context?: ContextType
+) {
+  if (context?.user !== makima_config.creator.discord_username) {
+    return "You are not allowed to run this command";
+  }
   try {
     notifyChannel(`Running command: ${commandString}`);
     const res = await $`cd ~/ && sh -c ${commandString}`;
