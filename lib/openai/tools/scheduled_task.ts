@@ -55,8 +55,5 @@ export async function schedule_task(
     }
   }, scheduledTime.getTime() - Date.now());
 
-  return `Task scheduled for ${format(
-    scheduledTime,
-    "h:mm a"
-  )}, reply with "Task was scheduled."`;
+  return `Task scheduled for ${format(scheduledTime, "h:mm a")}, reply to user`;
 }

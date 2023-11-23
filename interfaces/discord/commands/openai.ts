@@ -60,6 +60,7 @@ export const OpenAiCommand = {
             user: interaction.user.username,
             channel_id: interaction.channelId,
             meta,
+            signal: controller.signal,
           },
           onAssistantMessage: (mess) => {
             console.log("assistant message", mess);
@@ -131,6 +132,7 @@ export const OpenAiCommand = {
             user: message.author.username,
             channel_id: message.channelId,
             meta,
+            signal: controller.signal,
           },
           onAssistantMessage: (mess) => {
             console.log("assistant message", mess);

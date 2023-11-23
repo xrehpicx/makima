@@ -1,13 +1,17 @@
 import { notifyChannel } from "@/interfaces/discord";
 import { ContextType } from "../..";
 import { OllamaEmbeddings } from "langchain/embeddings/ollama";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
+import { isInLimit } from "..";
 
-const embeddings = new OllamaEmbeddings({
-  model: "llama2-uncensored:7b-chat-q2_K",
-});
+// const embeddings = new OllamaEmbeddings({
+//   model: "mistral",
+// });
+
+// const embeddings = new OpenAIEmbeddings();
 
 export function get_user_context({}, context?: ContextType) {
   if (!context) return "No context available for this user";
@@ -20,8 +24,26 @@ export async function save_user_memory(
   { content }: { content: string },
   context?: ContextType
 ) {
+  if (
+    !isInLimit(
+      [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      500
+    )
+  ) {
+    return "Memory too long, to remember";
+  }
   const memory_space = context?.channel_id || context?.user || "general";
 
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
@@ -44,7 +66,8 @@ export async function save_user_memory(
     await tmp.addDocuments(
       [
         new Document({
-          pageContent: content,
+          pageContent: `${content}
+          data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
       ],
@@ -53,7 +76,7 @@ export async function save_user_memory(
     await tmp.save(embeddingsDirectory);
     active_memory_spaces.push({ id: embeddingsDirectory, store: tmp });
     console.log("This is a new user, saved:", content, "to memory");
-    return "This is a new user, saved: " + content + " to memory";
+    return "succesfully saved to memory";
   }
 
   notifyChannel(`Loading from space: ${memory_space}`);
@@ -75,7 +98,8 @@ export async function save_user_memory(
     const ids = await vectorStore.addDocuments(
       [
         new Document({
-          pageContent: content,
+          pageContent: `${content}
+          data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
       ],
@@ -101,7 +125,11 @@ export async function recall_user_memory(
   const memory_space = context?.channel_id || context?.user || "general";
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
-
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   if (!exists) {
     notifyChannel(`New memory space: ${memory_space}`);
     console.log("This is a new user, no memories saved yet");
@@ -121,11 +149,14 @@ export async function recall_user_memory(
 
   notifyChannel(`Loading from space: ${memory_space}`);
   const resultOne = await vectorStore.similaritySearch(content, 1);
-  notifyChannel(`Found from space: ${resultOne[0].pageContent}`);
+  notifyChannel(
+    `Found from space: ${resultOne
+      .map((r) => r.pageContent)
+      .join("\nnext memory:\n")}`
+  );
   console.log(resultOne);
-  return `found from memory: ${
-    resultOne[0].pageContent
-  }\nmeta_data:${JSON.stringify(resultOne[0].metadata)}`;
+  return `found memories: 
+  ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}`;
 }
 
 export async function forget_user_memory(
@@ -133,7 +164,11 @@ export async function forget_user_memory(
   context?: ContextType
 ) {
   const memory_space = context?.channel_id || context?.user || "general";
-
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -167,6 +202,7 @@ export async function forget_user_memory(
     await vectorStore.delete({
       ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
     });
+    await vectorStore.save(embeddingsDirectory);
 
     notifyChannel(`Memory forgotten: ${resultOne[0].pageContent}`);
     console.log("Memory forgotten");

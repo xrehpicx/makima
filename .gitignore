@@ -1,5 +1,5 @@
 # Based on https://raw.githubusercontent.com/github/gitignore/main/Node.gitignore
-
+scheduled_task.json
 # Logs
 
 logs
@@ -14,6 +14,7 @@ lerna-debug.log*
 testembeddings
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
+makima.sock
 # Runtime data
 threads.json
 pids

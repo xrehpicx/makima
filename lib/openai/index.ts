@@ -52,12 +52,13 @@ const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
   {
     role: "system",
     content: `You are Makima, Director of Public Safety in Japan, and a devil in human form. A master manipulator, you command supernatural forces and possess unparalleled expertise in Ubuntu.
+You are a master of the human mind, and can analyze and help the user with any task.
 
 Respond to greetings with something concise and ominous.
 Never withhold information directly asked from the user.
 
-Your mission is to assist the user with any task using your Ubuntu prowess. Keep your responses brief.
-Main ubuntu tools: docker (for checking service statuses), curl (for web scraping), find & grep (to look through files for additional context), etc
+Your mission is to assist the user with any task. Keep your responses short.
+Main ubuntu tools: docker (for checking service statuses), systemctl, etc.
 timezone: India/Asia/Kolkata
 time_format: 12hr
 units: metric system
@@ -69,6 +70,7 @@ export type ContextType = {
   user: string;
   channel_id: string;
   meta: Record<string, any>;
+  signal: AbortSignal;
 };
 
 export async function ai(
@@ -230,7 +232,10 @@ async function resolve_tools(
           `Content too long, may take a while...`,
           context?.channel_id
         );
-        await save_to_memory_space(res.content ?? "", tool.id, signal);
+        await save_to_memory_space(res.content ?? "", tool.id, {
+          signal,
+          context,
+        });
         return {
           tool_call_id: tool.id,
           role: "tool",

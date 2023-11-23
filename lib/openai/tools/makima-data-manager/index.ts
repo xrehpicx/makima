@@ -5,15 +5,17 @@ import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
+import { OpenAIEmbeddings } from "langchain/embeddings/openai";
+import { isInLimit } from "..";
 
-const embeddings = new OllamaEmbeddings({
-  model: "llama2-uncensored:7b-chat-q2_K",
-  requestOptions: {
-    embeddingOnly: true,
-  },
-  maxRetries: 1,
-  maxConcurrency: 1,
-});
+// const embeddings = new OllamaEmbeddings({
+//   model: "mistral",
+//   requestOptions: {
+//     embeddingOnly: true,
+//   },
+//   maxRetries: 1,
+//   maxConcurrency: 1,
+// });
 
 const splitter = new RecursiveCharacterTextSplitter({
   chunkSize: 10,
@@ -25,10 +27,19 @@ let active_memory_spaces: { id: string; store: FaissStore }[] = [];
 export async function save_to_memory_space(
   content: string,
   memory_space: string,
-  signal?: AbortSignal
+  { signal, context }: { signal?: AbortSignal; context?: ContextType }
 ) {
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal }),
+    },
+  });
+
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
-  const docs = await splitter.createDocuments([content]);
+  const docs = await splitter.createDocuments([
+    `${content}
+    data_context: ${JSON.stringify(context)}`,
+  ]);
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -67,8 +78,26 @@ export async function save_makima_memory(
   { content, memory_space }: { content: string; memory_space?: string },
   context?: ContextType
 ) {
-  memory_space = memory_space || "makima";
+  if (
+    !isInLimit(
+      [
+        {
+          role: "user",
+          content,
+        },
+      ],
+      250
+    )
+  ) {
+    return "Memory too long for ur memory, u could try to split it up or make it smaller and save it then.";
+  }
 
+  memory_space = memory_space || "makima";
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
@@ -91,7 +120,8 @@ export async function save_makima_memory(
     await tmp.addDocuments(
       [
         new Document({
-          pageContent: content,
+          pageContent: `${content}
+          data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
       ],
@@ -122,7 +152,8 @@ export async function save_makima_memory(
     const ids = await vectorStore.addDocuments(
       [
         new Document({
-          pageContent: content,
+          pageContent: `${content}
+          data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
       ],
@@ -146,6 +177,11 @@ export async function recall_makima_memory(
   context?: ContextType
 ) {
   memory_space = memory_space || "makima";
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -168,17 +204,25 @@ export async function recall_makima_memory(
 
   notifyChannel(`Loading from space: ${memory_space}`);
   const resultOne = await vectorStore.similaritySearch(content, 1);
-  notifyChannel(`Found from space: ${resultOne[0].pageContent}`);
+  notifyChannel(
+    `Found from space: ${resultOne
+      .map((r) => r.pageContent)
+      .join("\nnext memory:\n")}`
+  );
   console.log(resultOne);
-  return `found from memory: ${
-    resultOne[0].pageContent
-  }\nmeta_data:${JSON.stringify(resultOne[0].metadata)}`;
+  return `found memories: 
+  ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}`;
 }
 
 export async function forget_makima_memory(
   { content }: { content: string },
   context?: ContextType
 ) {
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
   const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${"makima"}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -207,6 +251,7 @@ export async function forget_makima_memory(
     await vectorStore.delete({
       ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
     });
+    await vectorStore.save(embeddingsDirectory);
     notifyChannel(`Memory forgotten: ${resultOne[0].pageContent}`);
     console.log("Memory forgotten");
     return "Memory forgotten";

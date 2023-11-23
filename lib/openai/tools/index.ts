@@ -72,26 +72,21 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     type: "function",
     function: {
       name: "schedule_task",
-      description: `Schedule a task by telling it what to message the user at the required time. 
-      Always check the time before running the task.
-      'Reply with' is a special instruction that will reply to the user with the given message use this for all reminder use cases!.
-      Example 1:
-      user: \`Remind me to drink water in 1 hour\`
-      task: { instruction: "Reply with 'Drink water, it's time up'", time: "2023-11-21T17:30:00" }
+      description: `Schedule tasks with user instructions and specific times. 'Reply:' sends responses, 'Run:' executes commands with output. AI processes instructions at set times, promptly returning results. Clearly communicate user intentions for precise AI execution. This AI handles tasks similarly to you. When the user asks for a future action, instruct the AI to execute it at the specified time and reply with the result.
+Examples:
 
-      Example 2:
-      user: \`Check system uptime at 4:30 PM\`
-      task: { instruction: "Run 'uptime' command and reply with the result", time: "2023-11-21T16:30:00" }
+1. user: \`Remind me to drink water in 1 hour\`
+   task: { instruction: "Reply: 'Drink water, it's time up'", time: "2023-11-21T17:30:00" }
 
-      Example 3:
-      user: \`Check if example.com is online after 10 minutes\`
-      task: { instruction: "Make a 'curl' call to example.com and reply if it's online or not", time: "2023-11-21T15:05:00" }
+2. user: \`Check system uptime at 4:30 PM\`
+   task: { instruction: "Run 'uptime' and reply with the result", time: "2023-11-21T16:30:00" }
 
-      Example 4:
-      user: \`Remind me to submit the report at 3 PM\`
-      task: { instruction: "Reply with 'You need to submit the report right now!'", time: "2023-11-21T15:00:00" }
-      
-    `,
+3. user: \`Check if example.com is online after 10 minutes\`
+   task: { instruction: "Run 'curl' to example.com and reply if online", time: "2023-11-21T15:05:00" }
+
+4. user: \`Remind me to submit the report at 3 PM\`
+   task: { instruction: "Reply: 'Submit the report'", time: "2023-11-21T15:00:00" }
+`,
       parameters: {
         type: "object",
         properties: {
@@ -184,9 +179,20 @@ export const tools: OpenAI.ChatCompletionTool[] = [
     function: {
       name: "save_user_memory",
       description: `Save user preferences or documents for future reference.
+      Use the save_memory function to store user preferences or documents for later use.
+      Include the user's context details, such as their username and a timestamp obtained from the get_context function.
+      This function is useful when the user asks you to remember something about them or something they want you to remember.
+      Examples:
+      1. User: "I like dosa"
+        - save_user_memory({ content: "{username} likes dosa {timestamp}" })
+      2. User: "I did 3 more pull ups than usual today"
+        - save_user_memory({ content: "{username} did 3 more pull ups {timestamp}" })
+      3. User: "I watch Chainsaw Man"
+        - save_user_memory({ content: "{username} watches Chainsaw Man {timestamp}" })
+        - save_makima_memory({ content: "'Chainsaw Man' is a show" {timestamp} })
+      4. User: "I can do 15kg bicep curls now"
+        - save_user_memory({ content: "{username} can do 15kg bicep curls {timestamp}" })`,
 
-Example:
-- save_user_memory({ content: "user likes color blue" })`,
       parameters: {
         type: "object",
         properties: {
@@ -257,13 +263,15 @@ Example:
       description: `Save memories about general topics and knowledge for your own reference. This is your personal memory, use it to remember things that you find interesting or useful.
 
 When to use:
-- Example 1: Your favorite color is red.
-- Example 2: You learned that the capital of France is Paris.
-- Example 3: A coding shortcut or command that you frequently use.
-- Example 4: A fun fact about space that you want to remember.
+1: Your favorite color is red.
+2: You learned that the capital of France is Paris.
+3: A coding shortcut or command that you frequently use.
+4: A fun fact about space that you want to remember.
+5. To save positive interactions with users for better future responses.
 
 Use this function whenever you come across information that you'd like to store for future reference.
-You can also save memories to custom memory_spaces.`,
+You can also save memories to custom memory_spaces.
+DO NOT USE memory_spaces for storing user specific information, use save_user_memory for that.`,
       parameters: {
         type: "object",
         properties: {
@@ -286,8 +294,10 @@ You can also save memories to custom memory_spaces.`,
       name: "recall_makima_memory",
       description: `Recall a memory from your own memory (Makima's memory).
       Use this function to retrieve information you saved for future reference.
+
       You can also use this to fetch memories from custom memory_spaces.
       memory_spaces are scopes of memories isolated from the rest of your memories.
+      DO NOT USE memory_spaces for recalling user specific information, use recall_user_memory for that.
       `,
       parameters: {
         type: "object",
@@ -326,7 +336,7 @@ You can also save memories to custom memory_spaces.`,
     type: "function",
     function: {
       name: "forget_memory_space",
-      description: `Forget an entire memory_space`,
+      description: `Forget an entire memory_space, use this only when a tool asks you to do so.`,
       parameters: {
         type: "object",
         properties: {
@@ -447,7 +457,7 @@ export async function runTool(
   }
 }
 
-function isInLimit(
+export function isInLimit(
   messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[],
   tokenLimit: number
 ) {
