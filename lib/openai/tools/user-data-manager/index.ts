@@ -14,6 +14,8 @@ export function get_user_context({}, context?: ContextType) {
   return JSON.stringify(context);
 }
 
+let active_memory_spaces: { id: string; store: FaissStore }[] = [];
+
 export async function save_user_memory(
   { content }: { content: string },
   context?: ContextType
@@ -49,12 +51,22 @@ export async function save_user_memory(
       { ids: [id] }
     );
     await tmp.save(embeddingsDirectory);
+    active_memory_spaces.push({ id: embeddingsDirectory, store: tmp });
     console.log("This is a new user, saved:", content, "to memory");
     return "This is a new user, saved: " + content + " to memory";
   }
 
   notifyChannel(`Loading from space: ${memory_space}`);
-  const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vectorStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   try {
     const id = String(
@@ -96,7 +108,16 @@ export async function recall_user_memory(
     return "This is a new user, no memories saved yet";
   }
 
-  const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vectorStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   notifyChannel(`Loading from space: ${memory_space}`);
   const resultOne = await vectorStore.similaritySearch(content, 1);
@@ -122,7 +143,19 @@ export async function forget_user_memory(
   }
 
   try {
-    const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+    const cachedVectorStore = active_memory_spaces.find(
+      (s) => s.id === embeddingsDirectory
+    )?.store;
+
+    const vectorStore =
+      cachedVectorStore ??
+      (await FaissStore.load(embeddingsDirectory, embeddings));
+
+    if (!cachedVectorStore)
+      active_memory_spaces.push({
+        id: embeddingsDirectory,
+        store: vectorStore,
+      });
 
     const resultOne = await vectorStore.similaritySearch(content, 1);
 
@@ -159,6 +192,9 @@ export async function delete_all_user_memories({}, context?: ContextType) {
   // delete directory
   try {
     await fs.rm(embeddingsDirectory, { recursive: true, force: true });
+    active_memory_spaces = active_memory_spaces.filter(
+      (s) => s.id !== embeddingsDirectory
+    );
     console.log("Deleted all memories");
     return "Deleted all memories";
   } catch (error) {

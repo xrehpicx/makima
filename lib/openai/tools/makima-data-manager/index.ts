@@ -20,6 +20,8 @@ const splitter = new RecursiveCharacterTextSplitter({
   chunkOverlap: 2,
 });
 
+let active_memory_spaces: { id: string; store: FaissStore }[] = [];
+
 export async function save_to_memory_space(
   content: string,
   memory_space: string,
@@ -34,6 +36,7 @@ export async function save_to_memory_space(
     notifyChannel(`New memory space: ${memory_space}`);
     const tmp = await FaissStore.fromDocuments(docs, embeddings);
     await tmp.save(embeddingsDirectory);
+    active_memory_spaces.push({ id: embeddingsDirectory, store: tmp });
     console.log(
       "This is a temp memory space, saved:",
       content.slice(0, 100),
@@ -42,7 +45,17 @@ export async function save_to_memory_space(
     return memory_space;
   }
   notifyChannel(`Adding to space: ${memory_space}`);
-  const vecStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vecStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vecStore });
+
   await vecStore.addDocuments(docs);
   await vecStore.save(embeddingsDirectory);
   console.log("Saved:", content.slice(0, 100), "to memory");
@@ -85,12 +98,22 @@ export async function save_makima_memory(
       { ids: [id] }
     );
     await tmp.save(embeddingsDirectory);
+    active_memory_spaces.push({ id: embeddingsDirectory, store: tmp });
     console.log("This is a new user, saved:", content, "to memory");
     return "This is a new user, saved: " + content + " to memory";
   }
 
   notifyChannel(`Loading from space: ${memory_space}`);
-  const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vectorStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   try {
     const id = String(
@@ -132,7 +155,16 @@ export async function recall_makima_memory(
     return "This is a new user, no memories saved yet";
   }
 
-  const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vectorStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   notifyChannel(`Loading from space: ${memory_space}`);
   const resultOne = await vectorStore.similaritySearch(content, 1);
@@ -156,7 +188,19 @@ export async function forget_makima_memory(
   }
 
   try {
-    const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+    const cachedVectorStore = active_memory_spaces.find(
+      (s) => s.id === embeddingsDirectory
+    )?.store;
+
+    const vectorStore =
+      cachedVectorStore ??
+      (await FaissStore.load(embeddingsDirectory, embeddings));
+
+    if (!cachedVectorStore)
+      active_memory_spaces.push({
+        id: embeddingsDirectory,
+        store: vectorStore,
+      });
 
     const resultOne = await vectorStore.similaritySearch(content, 1);
 
@@ -186,6 +230,9 @@ export async function forget_memory_space(
 
   try {
     await fs.rm(embeddingsDirectory, { recursive: true });
+    active_memory_spaces = active_memory_spaces.filter(
+      (s) => s.id !== embeddingsDirectory
+    );
     notifyChannel(`Memory forgotten: ${memory_space}`);
     return "Memory space cleared";
   } catch (error) {

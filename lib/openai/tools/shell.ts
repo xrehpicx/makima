@@ -9,15 +9,18 @@ export async function shell(
   context?: ContextType
 ) {
   if (context?.user !== makima_config.creator.discord_username) {
-    return "You are not allowed to run this command";
+    notifyChannel(
+      `command blocked: ${commandString} being ran by ${context?.user}`
+    );
+    return "Command failed to run as user was not the admin";
   }
   try {
     notifyChannel(`Running command: ${commandString}`);
     const res = await $`cd ~/ && sh -c ${commandString}`;
-    return res.stdout.toString() || "Command ran successfully";
+    return `stdout: ${res.stdout.toString()}` || "Command ran successfully";
   } catch (e: any) {
     notifyChannel(`Command failed to run: ${commandString}`);
-    return e.stderr.toString() || "Command failed to run";
+    return `stderr: ${e.stderr.toString()}` || "Command failed to run";
   }
 }
 
