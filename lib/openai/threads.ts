@@ -1,5 +1,7 @@
 import * as fs from "fs/promises";
 import OpenAI from "openai";
+import { save_to_memory_space } from "./tools/makima-data-manager";
+import { ContextType } from ".";
 
 // Define types
 type ChatCompletionMessageParam = OpenAI.ChatCompletionMessageParam;
@@ -97,4 +99,35 @@ export async function getThread(
   }
 
   return undefined;
+}
+
+export async function move_to_long_term_memory(
+  channel_id: string,
+  context?: ContextType
+) {
+  const thread = await getThread(channel_id);
+  if (!thread) return;
+
+  const messages = thread.messages;
+
+  const system_prompts = messages
+    .slice(0, 5)
+    .filter((m) => m.role === "system");
+
+  const messages_mid_index = Math.floor(messages.length / 2);
+
+  // find the index of a user message around the middle of the messages array
+  const mid_user_message_index = messages.findIndex(
+    (m, i) => i > messages_mid_index && i < 10 && m.role === "user"
+  );
+
+  const long_term_memory_messages = messages.slice(0, mid_user_message_index);
+  const scliced_messages = messages.slice(mid_user_message_index);
+  await updateThread(channel_id, system_prompts.concat(scliced_messages));
+
+  long_term_memory_messages.forEach((m) => {
+    save_to_memory_space(`role: ${m.role}\ncontent: ${m.content}`, channel_id, {
+      context,
+    });
+  });
 }

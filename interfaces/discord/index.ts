@@ -3,6 +3,7 @@ import {
   ChannelType,
   Client,
   GatewayIntentBits,
+  Message,
   Partials,
   REST,
   Routes,
@@ -13,6 +14,7 @@ import { makima_config as config } from "@/config";
 import { RestartCommand } from "./commands/restart";
 import { OpenAiCommand } from "./commands/openai";
 import { ClearConvoCommand } from "./commands/clear";
+import { is_to_makima } from "@/lib/agents/detect_intent";
 
 const client = new Client({
   intents: [
@@ -67,13 +69,22 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  if (
+  const hasPermission =
     !Array.isArray(message.member?.roles) &&
     (message.member?.roles.cache.find((r) => r.name === "kin-dev") ||
-      message.member?.roles.cache.find((r) => r.name === "makimatester")) &&
-    message.mentions.has(client.user?.id as string)
-  ) {
+      message.member?.roles.cache.find((r) => r.name === "makimatester"));
+
+  if (hasPermission && message.mentions.has(client.user?.id as string)) {
     OpenAiCommand.message_handler(message);
+    return;
+  }
+
+  const ref_message = await is_to_makima(message);
+  if (hasPermission && ref_message) {
+    OpenAiCommand.message_handler(
+      message,
+      ref_message instanceof Message ? ref_message : undefined
+    );
     return;
   }
 });
@@ -92,7 +103,7 @@ client.on("interactionCreate", async (interaction) => {
 
 export function notifyChannel(
   message: string,
-  channelId: string = config.notification_channel
+  channelId = config.notification_channel
 ) {
   const channel = client.channels.cache.find((id) => id.id === channelId);
   if (channel?.isDMBased()) {
@@ -100,6 +111,10 @@ export function notifyChannel(
   } else if (channel instanceof TextChannel) {
     (channel as TextChannel).send(message);
   }
+}
+
+export function sendSystemMessage(content: string) {
+  notifyChannel(content, config.system_channel);
 }
 
 export function getClient() {

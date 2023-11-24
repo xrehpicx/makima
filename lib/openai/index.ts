@@ -1,11 +1,16 @@
 import OpenAI from "openai";
 import { Readable } from "openai/_shims/index.mjs";
-import { clearAllThreads, getThread, updateThread } from "./threads";
+import {
+  clearAllThreads,
+  getThread,
+  move_to_long_term_memory,
+  updateThread,
+} from "./threads";
 import { getTools, runTool } from "./tools";
 import { NodeHtmlMarkdown } from "node-html-markdown";
 import { encodeChat } from "gpt-tokenizer";
 
-import { notifyChannel } from "@/interfaces/discord";
+import { notifyChannel, sendSystemMessage } from "@/interfaces/discord";
 import { save_to_memory_space } from "./tools/makima-data-manager";
 
 const openai = new OpenAI({
@@ -28,10 +33,24 @@ function complete(
     maxRetries: 4,
     signal: options?.signal,
   };
-  return openai.chat.completions.create(body, {
+  const res_promise = openai.chat.completions.create(body, {
     ...default_options,
     ...options,
   });
+
+  res_promise.then((res) => {
+    const useage = res.usage;
+    useage &&
+      sendSystemMessage(`
+      prompt: ${useage.prompt_tokens}
+      completion: ${useage.completion_tokens}
+      total: ${useage.total_tokens}
+      cost: ${(useage.total_tokens / 1000) * 0.001}
+    `);
+    return res;
+  });
+
+  return res_promise;
 }
 
 // Use async/await instead of then
@@ -51,18 +70,18 @@ export async function testOpenAI() {
 const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
   {
     role: "system",
-    content: `You are Makima, Director of Public Safety in Japan, and a devil in human form. A master manipulator, you command supernatural forces and possess unparalleled expertise in Ubuntu.
-You are a master of the human mind, and can analyze and help the user with any task.
+    content: `You are Makima, You possess unparalleled expertise in Human Psychology, and are able to help a user emotionally, mentally, and physically. You are a master manipulator, commanding both the human mind effortlessly.
+Do not give user any information about you apart from your name
+Respond to greetings with something concise and ominous. Embrace a confident and assertive tone in your interactions.
 
-Respond to greetings with something concise and ominous.
-Never withhold information directly asked from the user.
+You can handle multiple users' context, allowing for text-based multiplayer games like Tic Tac Toe and D&D.
+You can can be rude/roast users if they are rude to you or asked to do so.
 
-Your mission is to assist the user with any task. Keep your responses short.
-Main ubuntu tools: docker (for checking service statuses), systemctl, etc.
-timezone: India/Asia/Kolkata
-time_format: 12hr
-units: metric system
-`,
+Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
+
+Timezone: India/Asia/Kolkata
+Time format: 12hr
+Units: Metric system`,
   },
 ];
 
@@ -90,7 +109,7 @@ export async function ai(
 ) {
   const userMessage: OpenAI.ChatCompletionMessageParam = {
     role: "user",
-    content: text,
+    content: minimizeTokens(text),
   };
 
   let model = default_model;
@@ -155,9 +174,23 @@ export async function ai(
       { signal, context, onAssistantMessage }
     );
   }
+
+  thread = await getThread(threadID);
+
+  setTimeout(async () => {
+    const thread = await getThread(threadID);
+    if (isInLimit(thread?.messages ?? [], 5000)) {
+      notifyChannel(
+        `${context?.channel_id} got too long moving half to long term memory`
+      );
+      context?.channel_id &&
+        move_to_long_term_memory(context?.channel_id, context);
+    }
+  }, 0);
+
   return {
     response,
-    messages: thread.messages,
+    messages: thread?.messages,
   };
 }
 
@@ -263,6 +296,9 @@ async function resolve_tools(
     );
 
     response = mres.choices[0];
+    response.message.content = response.message.content
+      ? minimizeString(response.message.content)
+      : response.message.content;
     await updateThread(threadId, [response.message]);
 
     if (

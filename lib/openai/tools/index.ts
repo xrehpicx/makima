@@ -21,6 +21,7 @@ import {
 import { get_youtube_video_data } from "./webtools/youtube";
 import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
+import { $ } from "zx";
 
 const [clock, clockSchema] = createClock();
 const [calculator, calculatorSchema] = createCalculator();
@@ -62,43 +63,6 @@ export const tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "schedule_task",
-      description: `Schedule tasks with user instructions and specific times. 'Reply:' sends responses, 'Run:' executes commands with output. AI processes instructions at set times, promptly returning results. Clearly communicate user intentions for precise AI execution. This AI handles tasks similarly to you. When the user asks for a future action, instruct the AI to execute it at the specified time and reply with the result.
-Examples:
-
-1. user: \`Remind me to drink water in 1 hour\`
-   task: { instruction: "Reply: 'Drink water, it's time up'", time: "2023-11-21T17:30:00" }
-
-2. user: \`Check system uptime at 4:30 PM\`
-   task: { instruction: "Run 'uptime' and reply with the result", time: "2023-11-21T16:30:00" }
-
-3. user: \`Check if example.com is online after 10 minutes\`
-   task: { instruction: "Run 'curl' to example.com and reply if online", time: "2023-11-21T15:05:00" }
-
-4. user: \`Remind <@user_id> to submit the report at 3 PM\`
-   task: { instruction: "Reply: '<@user_id> You submit the report'", time: "2023-11-21T15:00:00" }
-`,
-      parameters: {
-        type: "object",
-        properties: {
-          instruction: {
-            type: "string",
-            description: "The instruction to the AI for the scheduled task",
-          },
-          time: {
-            type: "string",
-            format: "iso-time",
-            description: "The ISO time string for scheduling the task",
-          },
-        },
-        required: ["instruction", "time"],
-      },
-    },
-  },
-
   {
     type: "function",
     function: clockSchema as OpenAI.FunctionDefinition,
@@ -166,7 +130,42 @@ Examples:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "schedule_task",
+      description: `Schedule tasks with user instructions and specific times. 'Reply:' sends responses, 'Run:' executes commands with output. AI processes instructions at set times, promptly returning results. Clearly communicate user intentions for precise AI execution. This AI handles tasks similarly to you. When the user asks for a future action, instruct the AI to execute it at the specified time and reply with the result.
+Examples:
 
+1. user: \`Remind me to drink water in 1 hour\`
+   task: { instruction: "Reply: 'Drink water, it's time up'", time: "2023-11-21T17:30:00" }
+
+2. user: \`Check system uptime at 4:30 PM\`
+   task: { instruction: "Run 'uptime' and reply with the result", time: "2023-11-21T16:30:00" }
+
+3. user: \`Check if example.com is online after 10 minutes\`
+   task: { instruction: "Run 'curl' to example.com and reply if online", time: "2023-11-21T15:05:00" }
+
+4. user: \`Remind <@user_id> to submit the report at 3 PM\`
+   task: { instruction: "Reply: '<@user_id> You submit the report'", time: "2023-11-21T15:00:00" }
+`,
+      parameters: {
+        type: "object",
+        properties: {
+          instruction: {
+            type: "string",
+            description: "The instruction to the AI for the scheduled task",
+          },
+          time: {
+            type: "string",
+            format: "iso-time",
+            description: "The ISO time string for scheduling the task",
+          },
+        },
+        required: ["instruction", "time"],
+      },
+    },
+  },
   // memory tools
   {
     type: "function",
@@ -383,35 +382,14 @@ DO NOT USE memory_spaces for storing user specific information, use save_user_me
   },
 ];
 
-const discord_tools: OpenAI.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "forget_discord_conversation",
-      description: "Can be used to forget ongoing discord conversation",
-      parameters: {
-        type: "object",
-        properties: {
-          channel_id: {
-            type: "string",
-            description: "discord message's channel_id",
-          },
-        },
-        required: ["channel_id"],
-      },
-    },
-  },
-];
-
 // export const auto_tools
-
 type Context = "general" | "discord";
 export function getTools(context: Context) {
   switch (context) {
     case "general":
       return tools;
     case "discord":
-      return tools.concat(discord_tools);
+      return tools;
   }
 }
 

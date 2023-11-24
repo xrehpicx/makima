@@ -89,7 +89,7 @@ export const OpenAiCommand = {
       }
     }
   },
-  async message_handler(message: Message) {
+  async message_handler(message: Message, ref_message?: Message) {
     const oldReq = messages_que.find((p) => p.id === message.channelId);
     if (oldReq) {
       console.log("aborting old req");
@@ -122,9 +122,15 @@ export const OpenAiCommand = {
       };
 
       const res = await ai(
-        repliedTo?.content
-          ? `reference_message_content:${repliedTo?.content}\n${message.content}\nmessage_author:${message.author.username}`
-          : `${message.content}`,
+        `${
+          repliedTo?.content
+            ? `reference_message_content:${repliedTo?.content}\n${message.content}\nmessage_author:${message.author.username}`
+            : `${message.content}`
+        }${
+          ref_message
+            ? `\nsystem_detected_ref_message: content=${ref_message.content} author=${ref_message.author.username}`
+            : ""
+        }`,
         message.channelId,
         {
           signal: controller.signal,
