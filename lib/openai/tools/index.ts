@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import { createCalculator, createClock } from "openai-function-calling-tools";
-import { shell, tmux_shell } from "./shell";
+import { shell } from "./shell";
 // import { forget_discord_conversation } from "./forget_discord_conversation";
 import { schedule_task } from "./scheduled_task";
 // import { setBotPresence } from "./discord_presence";
@@ -21,12 +21,9 @@ import {
 import { get_youtube_video_data } from "./webtools/youtube";
 import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
-import { NodeHtmlMarkdown } from "node-html-markdown";
 
 const [clock, clockSchema] = createClock();
-// const [webbrowser, webBrowserSchema] = createWebBrowser();
 const [calculator, calculatorSchema] = createCalculator();
-// const [request, requestSchema] = createRequest();
 
 export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
   {
@@ -35,11 +32,8 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     calculator,
 
     shell,
-    // forget_discord_conversation,
-    // set_presence: setBotPresence,
 
     get_user_context,
-    tmux_shell,
 
     save_user_memory,
     recall_user_memory,
@@ -84,8 +78,8 @@ Examples:
 3. user: \`Check if example.com is online after 10 minutes\`
    task: { instruction: "Run 'curl' to example.com and reply if online", time: "2023-11-21T15:05:00" }
 
-4. user: \`Remind me to submit the report at 3 PM\`
-   task: { instruction: "Reply: 'Submit the report'", time: "2023-11-21T15:00:00" }
+4. user: \`Remind <@user_id> to submit the report at 3 PM\`
+   task: { instruction: "Reply: '<@user_id> You submit the report'", time: "2023-11-21T15:00:00" }
 `,
       parameters: {
         type: "object",
@@ -178,20 +172,22 @@ Examples:
     type: "function",
     function: {
       name: "save_user_memory",
-      description: `Save user preferences or documents for future reference.
-      Use the save_memory function to store user preferences or documents for later use.
-      Include the user's context details, such as their username and a timestamp obtained from the get_context function.
-      This function is useful when the user asks you to remember something about them or something they want you to remember.
-      Examples:
-      1. User: "I like dosa"
-        - save_user_memory({ content: "{username} likes dosa {timestamp}" })
-      2. User: "I did 3 more pull ups than usual today"
-        - save_user_memory({ content: "{username} did 3 more pull ups {timestamp}" })
-      3. User: "I watch Chainsaw Man"
-        - save_user_memory({ content: "{username} watches Chainsaw Man {timestamp}" })
-        - save_makima_memory({ content: "'Chainsaw Man' is a show" {timestamp} })
-      4. User: "I can do 15kg bicep curls now"
-        - save_user_memory({ content: "{username} can do 15kg bicep curls {timestamp}" })`,
+      description: `Save user preferences or documents for future reference. Use the \`save_memory\` function to store user preferences or documents for later use. Include the user's context details, such as their username and a timestamp obtained from the \`get_context\` function. This function is useful when the user asks you to remember something about them or something they want you to remember. Don't save Reminders unless explicitly asked to do so.
+
+Examples:
+1. User: "I like dosa"
+   - \`save_user_memory({ content: "{username} likes dosa {timestamp}" })\`
+
+2. User: "I did 3 more pull ups than usual today"
+   - \`save_user_memory({ content: "{username} did 3 more pull ups {timestamp}" })\`
+
+3. User: "I watch Chainsaw Man"
+   - \`save_user_memory({ content: "{username} watches Chainsaw Man {timestamp}" })\`
+   - \`save_makima_memory({ content: "'Chainsaw Man' is a show" {timestamp} })\`
+
+4. User: "I can do 15kg bicep curls now"
+   - \`save_user_memory({ content: "{username} can do 15kg bicep curls {timestamp}" })\`
+`,
 
       parameters: {
         type: "object",

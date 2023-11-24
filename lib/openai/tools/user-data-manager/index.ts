@@ -6,6 +6,7 @@ import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
 import { isInLimit } from "..";
+import { makima_config } from "@/config";
 
 // const embeddings = new OllamaEmbeddings({
 //   model: "mistral",
@@ -44,7 +45,7 @@ export async function save_user_memory(
       fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
     },
   });
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -123,7 +124,7 @@ export async function recall_user_memory(
   context?: ContextType
 ) {
   const memory_space = context?.channel_id || context?.user || "general";
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
   const embeddings = new OpenAIEmbeddings({
     configuration: {
@@ -169,7 +170,7 @@ export async function forget_user_memory(
       fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
     },
   });
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {
@@ -217,7 +218,7 @@ export async function forget_user_memory(
 export async function delete_all_user_memories({}, context?: ContextType) {
   const memory_space = context?.channel_id || context?.user || "general";
 
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {

@@ -1,12 +1,12 @@
 import { notifyChannel } from "@/interfaces/discord";
 import { ContextType } from "../..";
-import { OllamaEmbeddings } from "langchain/embeddings/ollama";
 import { FaissStore } from "langchain/vectorstores/faiss";
 import { fs } from "zx";
 import { Document } from "langchain/document";
 import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { isInLimit } from "..";
+import { makima_config } from "@/config";
 
 // const embeddings = new OllamaEmbeddings({
 //   model: "mistral",
@@ -35,7 +35,7 @@ export async function save_to_memory_space(
     },
   });
 
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const docs = await splitter.createDocuments([
     `${content}
     data_context: ${JSON.stringify(context)}`,
@@ -98,7 +98,7 @@ export async function save_makima_memory(
       fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
     },
   });
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
@@ -182,7 +182,7 @@ export async function recall_makima_memory(
       fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
     },
   });
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {
@@ -223,7 +223,9 @@ export async function forget_makima_memory(
       fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
     },
   });
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${"makima"}`;
+  const embeddingsDirectory = `${makima_config.env.working_dir}${
+    makima_config.env.working_dir
+  }/${"makima"}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {
@@ -266,7 +268,7 @@ export async function forget_memory_space(
   { memory_space }: { memory_space: string },
   context?: ContextType
 ) {
-  const embeddingsDirectory = `/home/makima/makima_memory/embeddings/${memory_space}`;
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
 
   if (!exists) {
