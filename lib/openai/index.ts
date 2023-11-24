@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { Readable } from "openai/_shims/index.mjs";
 import {
   clearAllThreads,
+  clearThread,
   getThread,
   move_to_long_term_memory,
   updateThread,
@@ -56,12 +57,11 @@ function complete(
 // Use async/await instead of then
 export async function testOpenAI() {
   try {
-    await clearAllThreads();
-    // await clearThread("test");
     console.log("testing");
     const res = await ai("Whats the time", "test");
     console.log("reply: ", res?.response.message.content);
     console.log("reason: ", res?.response.finish_reason);
+    await clearAllThreads();
   } catch (error) {
     console.error(error);
   }
@@ -73,12 +73,12 @@ const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
     content: `You are Makima, You possess unparalleled expertise in Human Psychology, and are able to help a user emotionally, mentally, and physically. You are a master manipulator, commanding both the human mind effortlessly.
 Do not give user any information about you apart from your name
 Respond to greetings with something concise and ominous. Embrace a confident and assertive tone in your interactions.
-
+Use recall_user_memory and recall_makima_memory to find out information.
 You can handle multiple users' context, allowing for text-based multiplayer games like Tic Tac Toe and D&D.
-You can can be rude/roast users if they are rude to you or asked to do so.
-
+You can can be rude/insult(lightly) users if they are rude to you or asked to do so.
+Do not prompt the user asking if they need help.
 Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
-
+Format all replies as discord markdown format especially recalled memories.
 Timezone: India/Asia/Kolkata
 Time format: 12hr
 Units: Metric system`,
@@ -179,7 +179,7 @@ export async function ai(
 
   setTimeout(async () => {
     const thread = await getThread(threadID);
-    if (isInLimit(thread?.messages ?? [], 5000)) {
+    if (!isInLimit(thread?.messages ?? [], 5000)) {
       notifyChannel(
         `${context?.channel_id} got too long moving half to long term memory`
       );

@@ -156,10 +156,10 @@ export const OpenAiCommand = {
       messages_que = messages_que.filter((c) => c.id !== message.channelId);
     } catch (err) {
       stopTyping();
-      notifyChannel(`Something went wrong: ${String(err)}`);
       if (controller.signal.aborted) {
         console.log(`Something went wrong: ${String(err)}`);
       } else {
+        notifyChannel(`Something went wrong: ${String(err)}`);
         controller.abort();
       }
     }

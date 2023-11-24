@@ -11,6 +11,7 @@ import {
   get_user_context,
   recall_user_memory,
   save_user_memory,
+  update_user_memory,
 } from "./user-data-manager";
 import {
   forget_makima_memory,
@@ -39,6 +40,7 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     save_user_memory,
     recall_user_memory,
     forget_user_memory,
+    update_user_memory,
     delete_all_user_memories,
 
     save_makima_memory,
@@ -171,21 +173,20 @@ Examples:
     type: "function",
     function: {
       name: "save_user_memory",
-      description: `Save user preferences or documents for future reference. Use the \`save_memory\` function to store user preferences or documents for later use. Include the user's context details, such as their username and a timestamp obtained from the \`get_context\` function. This function is useful when the user asks you to remember something about them or something they want you to remember. Don't save Reminders unless explicitly asked to do so.
+      description: `Save user preferences or documents for future reference using \`save_user_memory\`. Include the user's context (e.g., gym, entertainment) from \`get_context\`. Useful when users ask to remember details about them. Examples:
 
-Examples:
 1. User: "I like dosa"
-   - \`save_user_memory({ content: "{username} likes dosa {timestamp}" })\`
+   - \`save_user_memory({ content: "{username} likes dosa", context: "food" })\`
 
-2. User: "I did 3 more pull ups than usual today"
-   - \`save_user_memory({ content: "{username} did 3 more pull ups {timestamp}" })\`
+2. User: "I did 3 more pull ups"
+   - \`save_user_memory({ content: "{username} did 3 more pull ups", context: "gym" })\`
 
 3. User: "I watch Chainsaw Man"
-   - \`save_user_memory({ content: "{username} watches Chainsaw Man {timestamp}" })\`
-   - \`save_makima_memory({ content: "'Chainsaw Man' is a show" {timestamp} })\`
+   - \`save_user_memory({ content: "{username} watches Chainsaw Man", context: "entertainment" })\`
+   - \`save_makima_memory({ content: "'Chainsaw Man' is a show", context: "entertainment" })\`
 
-4. User: "I can do 15kg bicep curls now"
-   - \`save_user_memory({ content: "{username} can do 15kg bicep curls {timestamp}" })\`
+4. User: "I can do 15kg bicep curls"
+   - \`save_user_memory({ content: "{username} can do 15kg bicep curls", context: "gym" })\`
 `,
 
       parameters: {
@@ -195,8 +196,13 @@ Examples:
             type: "string",
             description: "The content to save",
           },
+          context: {
+            type: "string",
+            description:
+              "The type or category of memory (e.g., gym, entertainment)",
+          },
         },
-        required: ["content"],
+        required: ["content", "context"],
       },
     },
   },
@@ -205,9 +211,13 @@ Examples:
     function: {
       name: "recall_user_memory",
       description: `Recall a user's preference or information from past conversations. Useful for retrieving remembered details such as user preferences and documented requests.
+Use this to also recall older chat memories when user references an old message.      
 Example:
 - User: "What color do I like?"
-- recall_memory({ term: "user likes color" })`,
+- recall_memory({ term: "user likes color" })
+- AI: "You like blue"
+Make sure to format the output as markdown.
+`,
       parameters: {
         type: "object",
         properties: {
@@ -220,6 +230,43 @@ Example:
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "update_user_memory",
+      description: `recall_user_memory before running this function!
+Update a user's preference or information from past conversations. Useful for updating remembered details such as user preferences and documented requests.
+Example:
+- User: "I like blue and like dark mode"
+- update_memory({ content: "likes red and dark mode", updated_content: "likes blue and dark mode" })
+replace "likes red" with "likes blue".
+the updated string must contain the context and timestamp of the original memory.
+if the orignal memory is talking about multiple other things update the point thats needed and retain the rest of the content as is.
+`,
+
+      parameters: {
+        type: "object",
+        properties: {
+          content: {
+            type: "string",
+            description: "The content to update",
+          },
+          updated_content: {
+            type: "string",
+            description:
+              "The updated content string to replace the old, along with the context and timestamp",
+          },
+          context: {
+            type: "string",
+            description:
+              "The type or category of memory (e.g., gym, entertainment)",
+          },
+        },
+        required: ["content", "updated_content", "context"],
+      },
+    },
+  },
+
   {
     type: "function",
     function: {

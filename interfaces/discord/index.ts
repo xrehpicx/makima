@@ -60,7 +60,7 @@ client.on("ready", () => {
 });
 
 client.on("messageCreate", async (message) => {
-  if (message.author.bot) return;
+  if (message.author.bot && message.author.id === client.user?.id) return;
 
   const isDm = message.channel?.type === ChannelType.DM;
 

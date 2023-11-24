@@ -22,7 +22,7 @@ export function get_user_context({}, context?: ContextType) {
 let active_memory_spaces: { id: string; store: FaissStore }[] = [];
 
 export async function save_user_memory(
-  { content }: { content: string },
+  { content, context: ai_context }: { content: string; context: string },
   context?: ContextType
 ) {
   if (
@@ -67,7 +67,10 @@ export async function save_user_memory(
     await tmp.addDocuments(
       [
         new Document({
-          pageContent: `${content}
+          pageContent: `
+          context: ${ai_context}
+          content: ${content}
+          timestamp: ${Date.now()}
           data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
@@ -99,7 +102,10 @@ export async function save_user_memory(
     const ids = await vectorStore.addDocuments(
       [
         new Document({
-          pageContent: `${content}
+          pageContent: `
+          context: ${ai_context}
+          content: ${content}
+          timestamp: ${Date.now()}
           data_context: ${JSON.stringify(context)}`,
           metadata: { id },
         }),
@@ -112,7 +118,7 @@ export async function save_user_memory(
       `Memory saved to: ${memory_space}, id: ${id}, content: ${content}`
     );
     console.log("Memory saved");
-    return "Memory saved";
+    return "memory saved";
   } catch (err) {
     console.log("Error saving memory:", err);
     return `Error saving memory: ${err}`;
@@ -149,15 +155,16 @@ export async function recall_user_memory(
     active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   notifyChannel(`Loading from space: ${memory_space}`);
-  const resultOne = await vectorStore.similaritySearch(content, 1);
+  const resultOne = await vectorStore.similaritySearch(content, 4);
   notifyChannel(
-    `Found from space: ${resultOne
-      .map((r) => r.pageContent)
-      .join("\nnext memory:\n")}`
+    `found ${resultOne.length} memories: 
+  ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}\n`
   );
   console.log(resultOne);
-  return `found memories: 
-  ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}`;
+  return `found ${resultOne.length} memories: 
+  ${resultOne
+    .map((r) => r.pageContent)
+    .join("\nnext memory:\n")}\n format as markdown`;
 }
 
 export async function forget_user_memory(
@@ -212,6 +219,84 @@ export async function forget_user_memory(
     notifyChannel(`Error forgetting memory: ${error}`);
     console.log("Error forgetting memory:", error);
     return `Error forgetting memory: ${error}`;
+  }
+}
+
+export async function update_user_memory(
+  {
+    content,
+    updated_content,
+    context: ai_context,
+  }: { content: string; updated_content: string; context: string },
+  context?: ContextType
+) {
+  const memory_space = context?.channel_id || context?.user || "general";
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+    },
+  });
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
+  const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
+
+  if (!exists) {
+    console.log("This is a new user, no memories saved yet");
+    return "This is a new user, no memories saved yet";
+  }
+
+  try {
+    const cachedVectorStore = active_memory_spaces.find(
+      (s) => s.id === embeddingsDirectory
+    )?.store;
+
+    const vectorStore =
+      cachedVectorStore ??
+      (await FaissStore.load(embeddingsDirectory, embeddings));
+
+    if (!cachedVectorStore)
+      active_memory_spaces.push({
+        id: embeddingsDirectory,
+        store: vectorStore,
+      });
+
+    const resultOne = await vectorStore.similaritySearch(content, 1);
+
+    console.log("Updating: ", resultOne, resultOne[0].metadata.id);
+    console.log(
+      "IDS: ",
+      resultOne.map((d) => d.metadata.id || String(d.metadata))
+    );
+    await vectorStore.delete({
+      ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
+    });
+
+    const id = String(
+      context?.meta ? JSON.stringify(context.meta) : Math.random()
+    );
+    await vectorStore.addDocuments(
+      [
+        new Document({
+          pageContent: `
+          context: ${ai_context}
+          updated_content: ${updated_content}
+          updated_timestamp: ${Date.now()}
+          updated_data_context: ${JSON.stringify(context)}
+          `,
+          metadata: { id },
+        }),
+      ],
+      { ids: [id] }
+    );
+
+    await vectorStore.save(embeddingsDirectory);
+
+    notifyChannel(`Memory updated`);
+    console.log("Memory updated");
+    return "Memory updated";
+  } catch (error) {
+    notifyChannel(`Error updating memory: ${error}`);
+    console.log("Error updating memory:", error);
+    return `Error updating memory: ${error}`;
   }
 }
 
