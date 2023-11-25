@@ -1,6 +1,9 @@
 import * as fs from "fs/promises";
 import OpenAI from "openai";
-import { save_to_memory_space } from "./tools/makima-data-manager";
+import {
+  save_memories_to_memory_space,
+  save_to_memory_space,
+} from "./tools/makima-data-manager";
 import { ContextType } from ".";
 
 // Define types
@@ -101,33 +104,60 @@ export async function getThread(
   return undefined;
 }
 
+let moving = false;
+
 export async function move_to_long_term_memory(
   channel_id: string,
   context?: ContextType
 ) {
+  if (moving) return;
   const thread = await getThread(channel_id);
   if (!thread) return;
 
-  const messages = thread.messages;
+  let messages = thread.messages;
+
+  // filter out old messages that were already moved to long term memory
+  messages = messages.filter((m) =>
+    String(m.content)?.startsWith("search_id: ")
+  );
 
   const system_prompts = messages
     .slice(0, 5)
     .filter((m) => m.role === "system");
 
-  const messages_mid_index = Math.floor(messages.length / 2);
+  const messages_mid_index = Math.floor(messages.length / 1.5);
 
-  // find the index of a user message around the middle of the messages array
   const mid_user_message_index = messages.findIndex(
-    (m, i) => i > messages_mid_index && i < 10 && m.role === "user"
+    (m, i) => i > messages_mid_index - 4 && m.role === "user"
   );
 
   const long_term_memory_messages = messages.slice(0, mid_user_message_index);
   const scliced_messages = messages.slice(mid_user_message_index);
-  await updateThread(channel_id, system_prompts.concat(scliced_messages));
 
-  long_term_memory_messages.forEach((m) => {
-    save_to_memory_space(`role: ${m.role}\ncontent: ${m.content}`, channel_id, {
-      context,
-    });
-  });
+  moving = true;
+  console.log("moving to long term memory");
+
+  const ids = await save_memories_to_memory_space(
+    long_term_memory_messages.map((m) => String(m.content)),
+    channel_id,
+    { context }
+  );
+
+  const updated_long_term_memory_messages = ids.map(
+    (id, i) =>
+      ({
+        content: `search_id: ${id}`,
+        role: long_term_memory_messages[i].role,
+      } as OpenAI.ChatCompletionMessageParam)
+  );
+  await clearThread(channel_id);
+  // merge long term and sliced messages
+  await updateThread(
+    channel_id,
+    scliced_messages.concat(updated_long_term_memory_messages),
+    system_prompts
+  );
+
+  console.log("moved to long term memory");
+  moving = false;
 }

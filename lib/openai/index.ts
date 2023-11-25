@@ -61,7 +61,7 @@ export async function testOpenAI() {
     const res = await ai("Whats the time", "test");
     console.log("reply: ", res?.response.message.content);
     console.log("reason: ", res?.response.finish_reason);
-    await clearAllThreads();
+    // await clearAllThreads();
   } catch (error) {
     console.error(error);
   }
@@ -78,7 +78,7 @@ You can handle multiple users' context, allowing for text-based multiplayer game
 You can can be rude/insult(lightly) users if they are rude to you or asked to do so.
 Do not prompt the user asking if they need help.
 Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
-Format all replies as discord markdown format especially recalled memories.
+
 Timezone: India/Asia/Kolkata
 Time format: 12hr
 Units: Metric system`,
@@ -156,6 +156,7 @@ export async function ai(
       messages: thread.messages,
       tools: getTools("general"),
       user: context?.user,
+      frequency_penalty: -2,
     },
     { signal }
   );
@@ -179,12 +180,13 @@ export async function ai(
 
   setTimeout(async () => {
     const thread = await getThread(threadID);
-    if (!isInLimit(thread?.messages ?? [], 5000)) {
+
+    if (!isInLimit(thread?.messages ?? [], 2000)) {
       notifyChannel(
         `${context?.channel_id} got too long moving half to long term memory`
       );
       context?.channel_id &&
-        move_to_long_term_memory(context?.channel_id, context);
+        (await move_to_long_term_memory(context?.channel_id, context));
     }
   }, 0);
 
@@ -291,14 +293,13 @@ async function resolve_tools(
         tools,
         messages: updatedThread.messages,
         user: context?.user,
+        frequency_penalty: -2,
       },
       { signal }
     );
 
     response = mres.choices[0];
-    response.message.content = response.message.content
-      ? minimizeString(response.message.content)
-      : response.message.content;
+
     await updateThread(threadId, [response.message]);
 
     if (
@@ -330,6 +331,7 @@ function isInLimit(
     })),
     "gpt-3.5-turbo"
   );
+  console.log(encodedChat.length);
   return encodedChat.length < tokenLimit;
 }
 
@@ -347,6 +349,7 @@ async function minimizeUsingGpt3(text: string) {
         content: text,
       },
     ],
+    frequency_penalty: -2,
   });
 
   return res.choices[0].message.content;

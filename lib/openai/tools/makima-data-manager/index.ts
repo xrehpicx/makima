@@ -7,6 +7,7 @@ import { RecursiveCharacterTextSplitter } from "langchain/text_splitter";
 import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 import { isInLimit } from "..";
 import { makima_config } from "@/config";
+import { nanoid } from "nanoid";
 
 // const embeddings = new OllamaEmbeddings({
 //   model: "mistral",
@@ -72,6 +73,55 @@ export async function save_to_memory_space(
   console.log("Saved:", content.slice(0, 100), "to memory");
   notifyChannel(`Saved to space: ${memory_space}`);
   return memory_space;
+}
+export async function save_memories_to_memory_space(
+  content: string[],
+  memory_space: string,
+  { signal, context }: { signal?: AbortSignal; context?: ContextType }
+) {
+  const embeddings = new OpenAIEmbeddings({
+    configuration: {
+      fetch: (url, init) => fetch(url, { ...init, signal }),
+    },
+  });
+
+  const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
+  const ids = content.map(() => nanoid());
+  const docs = await splitter.createDocuments(
+    content.map((c, i) => `${c}\nuuid: ${ids[i]}`)
+  );
+
+  const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
+
+  if (!exists) {
+    notifyChannel(`New memory space: ${memory_space}`);
+    const tmp = await FaissStore.fromDocuments(docs, embeddings);
+    await tmp.save(embeddingsDirectory);
+    active_memory_spaces.push({ id: embeddingsDirectory, store: tmp });
+    console.log(
+      "This is a temp memory space, saved:",
+      content.slice(0, 100),
+      "to memory"
+    );
+    return ids;
+  }
+  notifyChannel(`Adding to space: ${memory_space}`);
+  const cachedVectorStore = active_memory_spaces.find(
+    (s) => s.id === embeddingsDirectory
+  )?.store;
+
+  const vecStore =
+    cachedVectorStore ??
+    (await FaissStore.load(embeddingsDirectory, embeddings));
+
+  if (!cachedVectorStore)
+    active_memory_spaces.push({ id: embeddingsDirectory, store: vecStore });
+
+  await vecStore.addDocuments(docs);
+  await vecStore.save(embeddingsDirectory);
+  console.log("Saved:", content.slice(0, 100), "to memory");
+  notifyChannel(`Saved to space: ${memory_space}`);
+  return ids;
 }
 
 export async function save_makima_memory(

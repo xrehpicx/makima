@@ -173,20 +173,15 @@ Examples:
     type: "function",
     function: {
       name: "save_user_memory",
-      description: `Save user preferences or documents for future reference using \`save_user_memory\`. Include the user's context (e.g., gym, entertainment) from \`get_context\`. Useful when users ask to remember details about them. Examples:
+      description: `Save user preferences or documents for future reference using \`save_user_memory\`. Include the user's context (e.g., gym, entertainment) from \`get_context\`. Useful when users ask to remember details about them. 
+This is the default function you should use to save user memories.
+Examples:
 
 1. User: "I like dosa"
    - \`save_user_memory({ content: "{username} likes dosa", context: "food" })\`
 
 2. User: "I did 3 more pull ups"
    - \`save_user_memory({ content: "{username} did 3 more pull ups", context: "gym" })\`
-
-3. User: "I watch Chainsaw Man"
-   - \`save_user_memory({ content: "{username} watches Chainsaw Man", context: "entertainment" })\`
-   - \`save_makima_memory({ content: "'Chainsaw Man' is a show", context: "entertainment" })\`
-
-4. User: "I can do 15kg bicep curls"
-   - \`save_user_memory({ content: "{username} can do 15kg bicep curls", context: "gym" })\`
 `,
 
       parameters: {
@@ -211,19 +206,20 @@ Examples:
     function: {
       name: "recall_user_memory",
       description: `Recall a user's preference or information from past conversations. Useful for retrieving remembered details such as user preferences and documented requests.
-Use this to also recall older chat memories when user references an old message.      
+Use this to also recall older chat memories when user references an old message.
+To get an old message directly search by \`search_id\`.
 Example:
 - User: "What color do I like?"
 - recall_memory({ term: "user likes color" })
 - AI: "You like blue"
-Make sure to format the output as markdown.
+Make sure to format the output as markdown in bullet points if it contains multiple points or stats.
 `,
       parameters: {
         type: "object",
         properties: {
           content: {
             type: "string",
-            description: "The content to recall",
+            description: "The content search by to recall",
           },
         },
         required: ["content"],
@@ -307,13 +303,9 @@ if the orignal memory is talking about multiple other things update the point th
 When to use:
 1: Your favorite color is red.
 2: You learned that the capital of France is Paris.
-3: A coding shortcut or command that you frequently use.
-4: A fun fact about space that you want to remember.
-5. To save positive interactions with users for better future responses.
+3: To save positive interactions with users for better future responses.
 
-Use this function whenever you come across information that you'd like to store for future reference.
-You can also save memories to custom memory_spaces.
-DO NOT USE memory_spaces for storing user specific information, use save_user_memory for that.`,
+Use this function whenever you come across information that you'd like to store for future reference.`,
       parameters: {
         type: "object",
         properties: {
@@ -321,10 +313,10 @@ DO NOT USE memory_spaces for storing user specific information, use save_user_me
             type: "string",
             description: "The content to save",
           },
-          memory_space: {
-            type: "string",
-            description: "the memory_space to save the memory to.",
-          },
+          // memory_space: {
+          //   type: "string",
+          //   description: "the memory_space to save the memory to.",
+          // },
         },
         required: ["content"],
       },
