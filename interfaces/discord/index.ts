@@ -15,6 +15,7 @@ import { RestartCommand } from "./commands/restart";
 import { OpenAiCommand } from "./commands/openai";
 import { ClearConvoCommand } from "./commands/clear";
 import { is_to_makima } from "@/lib/agents/detect_intent";
+import { notify_telegram_channel } from "../telegram";
 
 const client = new Client({
   intents: [
@@ -69,24 +70,24 @@ client.on("messageCreate", async (message) => {
     return;
   }
 
-  const hasPermission =
-    !Array.isArray(message.member?.roles) &&
-    (message.member?.roles.cache.find((r) => r.name === "kin-dev") ||
-      message.member?.roles.cache.find((r) => r.name === "makimatester"));
+  // const hasPermission =
+  //   !Array.isArray(message.member?.roles) &&
+  //   (message.member?.roles.cache.find((r) => r.name === "kin-dev") ||
+  //     message.member?.roles.cache.find((r) => r.name === "makimatester"));
 
-  if (hasPermission && message.mentions.has(client.user?.id as string)) {
-    OpenAiCommand.message_handler(message);
-    return;
-  }
+  // if (hasPermission && message.mentions.has(client.user?.id as string)) {
+  //   OpenAiCommand.message_handler(message);
+  //   return;
+  // }
 
-  const ref_message = await is_to_makima(message);
-  if (hasPermission && ref_message) {
-    OpenAiCommand.message_handler(
-      message,
-      ref_message instanceof Message ? ref_message : undefined
-    );
-    return;
-  }
+  // const ref_message = await is_to_makima(message);
+  // if (hasPermission && ref_message) {
+  //   OpenAiCommand.message_handler(
+  //     message,
+  //     ref_message instanceof Message ? ref_message : undefined
+  //   );
+  //   return;
+  // }
 });
 
 client.on("interactionCreate", async (interaction) => {
@@ -110,6 +111,9 @@ export function notifyChannel(
     channel.isTextBased() && channel.send(message);
   } else if (channel instanceof TextChannel) {
     (channel as TextChannel).send(message);
+  }
+  if (channelId === config.notification_channel) {
+    notify_telegram_channel(message);
   }
 }
 

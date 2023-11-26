@@ -41,6 +41,8 @@
     "pickleparser": "^0.2.1",
     "puppeteer": "^21.5.2",
     "sqlite3": "^5.1.6",
+    "telegraf": "^4.15.0",
+    "typegram": "^5.2.0",
     "youtube-transcript": "^1.0.6",
     "youtubei.js": "^7.0.0",
     "zod": "^3.22.4",

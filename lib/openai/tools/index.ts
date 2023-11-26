@@ -23,6 +23,7 @@ import { get_youtube_video_data } from "./webtools/youtube";
 import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
 import { $ } from "zx";
+import { memory_manager, message_user } from "./memory_agent";
 
 const [clock, clockSchema] = createClock();
 const [calculator, calculatorSchema] = createCalculator();
@@ -43,6 +44,8 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     update_user_memory,
     delete_all_user_memories,
 
+    message_user,
+
     save_makima_memory,
     recall_makima_memory,
     forget_makima_memory,
@@ -50,6 +53,9 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
 
     get_youtube_video_data,
     webscrape,
+
+    // agents
+    memory_manager,
   };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
@@ -71,16 +77,7 @@ export const tools: OpenAI.ChatCompletionTool[] = [
   },
   {
     type: "function",
-    function: {
-      ...calculatorSchema,
-      description: `
-      Use for:
-        - Calculating simple math expressions.
-        - Converting between units.
-        - Calculating time differences.
-        - Calculating time in different timezones.
-      `,
-    } as OpenAI.FunctionDefinition,
+    function: calculatorSchema as OpenAI.FunctionDefinition,
   },
   {
     type: "function",
@@ -172,214 +169,33 @@ Examples:
   {
     type: "function",
     function: {
-      name: "save_user_memory",
-      description: `Save user preferences or documents for future reference using \`save_user_memory\`. Include the user's context (e.g., gym, entertainment) from \`get_context\`. Useful when users ask to remember details about them. 
-This is the default function you should use to save user memories.
-Examples:
-
-1. User: "I like dosa"
-   - \`save_user_memory({ content: "{username} likes dosa", context: "food" })\`
-
-2. User: "I did 3 more pull ups"
-   - \`save_user_memory({ content: "{username} did 3 more pull ups", context: "gym" })\`
-`,
-
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to save",
-          },
-          context: {
-            type: "string",
-            description:
-              "The type or category of memory (e.g., gym, entertainment)",
-          },
-        },
-        required: ["content", "context"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "recall_user_memory",
-      description: `Recall a user's preference or information from past conversations. Useful for retrieving remembered details such as user preferences and documented requests.
-Use this to also recall older chat memories when user references an old message.
-To get an old message directly search by \`search_id\`.
-Example:
-- User: "What color do I like?"
-- recall_memory({ term: "user likes color" })
-- AI: "You like blue"
-Make sure to format the output as markdown in bullet points if it contains multiple points or stats.
-`,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content search by to recall",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "update_user_memory",
-      description: `recall_user_memory before running this function!
-Update a user's preference or information from past conversations. Useful for updating remembered details such as user preferences and documented requests.
-Example:
-- User: "I like blue and like dark mode"
-- update_memory({ content: "likes red and dark mode", updated_content: "likes blue and dark mode" })
-replace "likes red" with "likes blue".
-the updated string must contain the context and timestamp of the original memory.
-if the orignal memory is talking about multiple other things update the point thats needed and retain the rest of the content as is.
-`,
-
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to update",
-          },
-          updated_content: {
-            type: "string",
-            description:
-              "The updated content string to replace the old, along with the context and timestamp",
-          },
-          context: {
-            type: "string",
-            description:
-              "The type or category of memory (e.g., gym, entertainment)",
-          },
-        },
-        required: ["content", "updated_content", "context"],
-      },
-    },
-  },
-
-  {
-    type: "function",
-    function: {
-      name: "forget_user_memory",
-      description: "Can be used to forget a memory",
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to forget",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "delete_all_user_memories",
-      description: "Can be used to delete all user memories at once",
-      parameters: {
-        type: "object",
-        properties: {},
-        required: [],
-      },
-    },
-  },
-
-  // the bots own memory
-  {
-    type: "function",
-    function: {
-      name: "save_makima_memory",
-      description: `Save memories about general topics and knowledge for your own reference. This is your personal memory, use it to remember things that you find interesting or useful.
-
-When to use:
-1: Your favorite color is red.
-2: You learned that the capital of France is Paris.
-3: To save positive interactions with users for better future responses.
-
-Use this function whenever you come across information that you'd like to store for future reference.`,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to save",
-          },
-          // memory_space: {
-          //   type: "string",
-          //   description: "the memory_space to save the memory to.",
-          // },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "recall_makima_memory",
-      description: `Recall a memory from your own memory (Makima's memory).
-      Use this function to retrieve information you saved for future reference.
-
-      You can also use this to fetch memories from custom memory_spaces.
-      memory_spaces are scopes of memories isolated from the rest of your memories.
-      DO NOT USE memory_spaces for recalling user specific information, use recall_user_memory for that.
+      name: "memory_manager",
+      description: `Manage memories.
+      Examples:
+      1. user: "Remember my gym stats. Bench press 60kg 9 reps, Bicep curls 15kg 10reps, Pull ups 3 reps"
+          makima_prompt: 'save gym stats, bench press 60kg 9 reps, bicep curls 15kg 10reps, pull ups 3 reps'
+      2. user: "Update my pull ups to 5 reps"
+          makima_prompt: 'update pull ups to 5 reps context: gym'
+      3. user: "How many eggs do I need to buy?"
+          makima_prompt: 'recall shopping list'
+      4. user: "Remember my name is raj"
+          makima_prompt: 'save user's name as raj'
+      5. user: "Whats my name"
+          makima_prompt: 'recall user's name'
+      5. needs old message with id of search_id: "somevalue"
+          makima_prompt: 'find the old message of search_id: "somevalue"'
+      6. you need to search for "test term" in a memory_sapce of "tools_id_1321431412"
+          makima_prompt: 'search test term in tools_id_1321431412 memory_space'
       `,
       parameters: {
         type: "object",
         properties: {
-          content: {
+          makima_prompt: {
             type: "string",
-            description: "The content to recall",
-          },
-          memory_space: {
-            type: "string",
-            description: "The memory_space to recall from",
+            description: "The prompt to use for memory_manager",
           },
         },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "forget_makima_memory",
-      description: `Forget a memory from your own memory (Makima's memory). Use this function to remove information that you no longer need or find relevant.`,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to forget",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "forget_memory_space",
-      description: `Forget an entire memory_space, use this only when a tool asks you to do so.`,
-      parameters: {
-        type: "object",
-        properties: {
-          memory_space: {
-            type: "string",
-            description: "The memory_space to forget",
-          },
-        },
-        required: ["memory_space"],
+        required: ["makima_prompt"],
       },
     },
   },

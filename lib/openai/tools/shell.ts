@@ -8,7 +8,10 @@ export async function shell(
   { commandString }: { commandString: string },
   context?: ContextType
 ) {
-  if (context?.user !== makima_config.creator.discord_username) {
+  if (
+    context?.user !== makima_config.creator.discord_username ||
+    context?.user !== makima_config.interfaces.telegram.admin_username
+  ) {
     // run in isolated docker container using docker run without mounting anything
     try {
       notifyChannel(

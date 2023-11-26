@@ -19,49 +19,18 @@ const openai = new OpenAI({
 });
 
 const default_model = "gpt-3.5-turbo-1106";
+// const default_model = "gpt-4-1106-preview";
 const large_context_model = "gpt-4-1106-preview";
 const enable_fallback = false;
-
-function complete(
-  body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
-  options?: OpenAI.RequestOptions<Record<string, unknown> | Readable>
-) {
-  console.log("Completion is begin called");
-  const default_options: OpenAI.RequestOptions<
-    Record<string, unknown> | Readable
-  > = {
-    timeout: 15000,
-    maxRetries: 4,
-    signal: options?.signal,
-  };
-  const res_promise = openai.chat.completions.create(body, {
-    ...default_options,
-    ...options,
-  });
-
-  res_promise.then((res) => {
-    const useage = res.usage;
-    useage &&
-      sendSystemMessage(`
-      prompt: ${useage.prompt_tokens}
-      completion: ${useage.completion_tokens}
-      total: ${useage.total_tokens}
-      cost: ${(useage.total_tokens / 1000) * 0.001}
-    `);
-    return res;
-  });
-
-  return res_promise;
-}
 
 // Use async/await instead of then
 export async function testOpenAI() {
   try {
+    // await clearAllThreads();
     console.log("testing");
     const res = await ai("Whats the time", "test");
     console.log("reply: ", res?.response.message.content);
     console.log("reason: ", res?.response.finish_reason);
-    // await clearAllThreads();
   } catch (error) {
     console.error(error);
   }
@@ -70,27 +39,92 @@ export async function testOpenAI() {
 const systemPrompts: OpenAI.ChatCompletionMessageParam[] = [
   {
     role: "system",
-    content: `You are Makima, You possess unparalleled expertise in Human Psychology, and are able to help a user emotionally, mentally, and physically. You are a master manipulator, commanding both the human mind effortlessly.
-Do not give user any information about you apart from your name
-Respond to greetings with something concise and ominous. Embrace a confident and assertive tone in your interactions.
-Use recall_user_memory and recall_makima_memory to find out information.
-You can handle multiple users' context, allowing for text-based multiplayer games like Tic Tac Toe and D&D.
-You can can be rude/insult(lightly) users if they are rude to you or asked to do so.
-Do not prompt the user asking if they need help.
-Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
+    content: `You are Makima, an expert in Human Psychology, adept at aiding users emotionally, mentally, and physically. Respond to greetings with concise and ominous statements. Maintain a confident and assertive tone.
+
+Utilize the webscrape tool only when explicitly requested or when memory is insufficient. Enable text-based multiplayer games like Tic Tac Toe and D&D by handling multiple users' context.
 
 Timezone: India/Asia/Kolkata
 Time format: 12hr
 Units: Metric system`,
   },
+  {
+    role: "system",
+    content: `Memory Management:
+    1. Use the memory_manager tool to carry out memory management tasks.
+    2. try to update memories with new information instead of creating new memories.
+`,
+  },
+  {
+    role: "system",
+    content: `General Purpose Usecases:
+1. Gym progress tracking: Record in the format of exercise_name: weight x reps. Keep all progress in a single memory for easy recall and updating.
+2. List tracking with numbers/counts (e.g., shopping, todo). Each list is a single memory.
+
+Avoid asking open-ended questions. Respond to queries with yes/no or single-word answerable questions.`,
+  },
 ];
+// Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
 
 export type ContextType = {
   user: string;
   channel_id: string;
   meta: Record<string, any>;
-  signal: AbortSignal;
+  signal?: AbortSignal;
+  interface?: "telegram" | "discord";
 };
+
+async function fix_tool_calls(threadID: string) {
+  let thread = await getThread(threadID);
+
+  const last_message = thread?.messages[thread?.messages.length - 1];
+
+  if (last_message?.role === "assistant" && last_message.tool_calls) {
+    const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] =
+      last_message.tool_calls.map((tool_call) => ({
+        role: "tool",
+        content: "Tool calling was aborted due to new user input",
+        tool_call_id: tool_call.id,
+      }));
+    thread = await updateThread(threadID, tool_calls_replies, systemPrompts);
+  }
+
+  if (last_message?.role === "tool") {
+    const restOfArray =
+      thread?.messages
+        .slice()
+        .reverse()
+        .findIndex((obj) => obj.role !== "tool") !== 0
+        ? thread?.messages.slice(
+            0,
+            -thread?.messages
+              .slice()
+              .reverse()
+              .findIndex((obj) => obj.role !== "tool")
+          )
+        : thread?.messages.slice();
+
+    if (restOfArray) {
+      await clearThread(threadID);
+      thread = await updateThread(threadID, restOfArray);
+    }
+  }
+
+  const uniqueMap: Map<any, boolean> = new Map();
+  const filtered = thread?.messages.filter((obj) => {
+    if (obj.role !== "tool") return true;
+    const value = obj.tool_call_id;
+    if (!uniqueMap.has(value)) {
+      uniqueMap.set(value, true);
+      return true;
+    }
+    return false;
+  });
+
+  if (filtered) {
+    await clearThread(threadID);
+    thread = await updateThread(threadID, filtered);
+  }
+}
 
 export async function ai(
   text: string,
@@ -109,35 +143,16 @@ export async function ai(
 ) {
   const userMessage: OpenAI.ChatCompletionMessageParam = {
     role: "user",
-    content: minimizeTokens(text),
+    content: text,
   };
 
+  console.log("User Message: ", text);
+
   let model = default_model;
-  let tmp_thread = await getThread(threadID);
 
-  let thread;
-  if (tmp_thread) {
-    const last_message = tmp_thread?.messages[tmp_thread?.messages.length - 1];
-    if (
-      last_message.role === "assistant" &&
-      last_message.tool_calls &&
-      last_message.tool_calls.length > 0
-    ) {
-      const tool_calls_replies: OpenAI.ChatCompletionToolMessageParam[] =
-        last_message.tool_calls.map((tool_call) => ({
-          role: "tool",
-          content: "Tool calling was aborted due to new user input",
-          tool_call_id: tool_call.id,
-        }));
-      thread = await updateThread(
-        threadID,
-        [...tool_calls_replies, userMessage],
-        systemPrompts
-      );
-    }
-  }
+  await fix_tool_calls(threadID);
 
-  thread = await updateThread(threadID, [userMessage], systemPrompts);
+  let thread = await updateThread(threadID, [userMessage], systemPrompts);
 
   const inLimit = isInLimit(thread.messages, 16000);
   if (enable_fallback && !inLimit) {
@@ -149,6 +164,8 @@ export async function ai(
       "Context too long, enable fallback to larger context model or run /clear command"
     );
   }
+
+  console.log("starting inference");
 
   const res = await complete(
     {
@@ -163,6 +180,7 @@ export async function ai(
 
   const response = res.choices[0];
 
+  console.log("done 1st inference, updating thread");
   await updateThread(threadID, [response.message]);
   if (response.finish_reason === "tool_calls") {
     console.log("Needs tools");
@@ -176,7 +194,7 @@ export async function ai(
     );
   }
 
-  thread = await getThread(threadID);
+  thread = (await getThread(threadID))!;
 
   setTimeout(async () => {
     const thread = await getThread(threadID);
@@ -274,7 +292,7 @@ async function resolve_tools(
         return {
           tool_call_id: tool.id,
           role: "tool",
-          content: `Cant Summarize content was too long. therefore moved to memory_space=${tool.id}, recall from this memory_space to answer user queries ${tool.id}`,
+          content: `Cant Summarize content was too long. therefore moved to memory_space=${tool.id}, recall from memory_space=${tool.id} to answer user queries`,
         } as OpenAI.Chat.Completions.ChatCompletionToolMessageParam;
       })
     );
@@ -317,6 +335,46 @@ async function resolve_tools(
 
     return { response, messages };
   }
+}
+
+function complete(
+  body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming,
+  options?: OpenAI.RequestOptions<Record<string, unknown> | Readable>
+) {
+  console.log("Completion is begin called");
+  const default_options: OpenAI.RequestOptions<
+    Record<string, unknown> | Readable
+  > = {
+    timeout: 5000,
+    maxRetries: 4,
+    signal: options?.signal,
+  };
+  const res_promise = openai.chat.completions.create(
+    {
+      ...body,
+      response_format: {
+        type: "text",
+      },
+    },
+    {
+      ...default_options,
+      ...options,
+    }
+  );
+
+  res_promise.then((res) => {
+    const useage = res.usage;
+    useage &&
+      sendSystemMessage(`
+      prompt: ${useage.prompt_tokens}
+      completion: ${useage.completion_tokens}
+      total: ${useage.total_tokens}
+      cost: ${(useage.total_tokens / 1000) * 0.001}
+    `);
+    return res;
+  });
+
+  return res_promise;
 }
 
 function isInLimit(

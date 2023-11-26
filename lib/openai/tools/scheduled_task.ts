@@ -1,6 +1,7 @@
 import { notifyChannel } from "@/interfaces/discord";
 import { ContextType, ai } from "..";
 import { format, isValid, parseISO } from "date-fns";
+import { notify_telegram_channel } from "@/interfaces/telegram";
 
 export async function schedule_task(
   {
@@ -21,8 +22,14 @@ export async function schedule_task(
     return "Invalid time format. Please use a valid ISO time string.";
   }
 
-  if (scheduledTime <= new Date()) {
-    return "Invalid time. The scheduled time should be in the future. ask the user for new future time";
+  if ((scheduledTime.getTime() - Date.now()) < 0) {
+    console.log(
+      scheduledTime.getTime() - Date.now(),
+      "ms",
+      scheduledTime.getTime(),
+      Date.now()
+    );
+    return "Invalid time. The scheduled time should be in the future. ask the user for new future time or retry time format";
   }
 
   notifyChannel(
@@ -40,12 +47,20 @@ export async function schedule_task(
       )} for channel: ${channel_id} and user: ${context?.user}` ??
         "schedule_task failed"
     );
+
     try {
       const res = await ai(task_description, channel_id, { context });
-      notifyChannel(
-        res?.response.message.content ?? "schedule_task failed",
-        channel_id
-      );
+      if (context.interface === "telegram") {
+        notify_telegram_channel(
+          res?.response.message.content ?? "schedule_task failed",
+          channel_id
+        );
+      } else {
+        notifyChannel(
+          res?.response.message.content ?? "schedule_task failed",
+          channel_id
+        );
+      }
     } catch (error) {
       notifyChannel(
         `Scheduled task threw an error: ${String(error)}`,

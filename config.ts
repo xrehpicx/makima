@@ -13,6 +13,13 @@ const makimaConfigSchema = z.object({
   notification_channel: z.string(),
   system_channel: z.string(),
   admins: z.array(z.string()),
+  interfaces: z.object({
+    telegram: z.object({
+      token: z.string(),
+      admin_username: z.string(),
+      notification_channel: z.string(),
+    }),
+  }),
   env: z.object({
     shell_username: z.string(),
     shell_password: z.string(),
@@ -28,6 +35,13 @@ export const makima_config = {
     name: process.env.MAKIMA_CREATOR_NAME!,
     discord_username: process.env.MAKIMA_DISCORD_USERNAME!,
     discord_userid: process.env.MAKIMA_DISCORD_USERID!,
+  },
+  interfaces: {
+    telegram: {
+      token: process.env.TELEGRAM_BOT_TOKEN!,
+      admin_username: process.env.TELEGRAM_ADMIN!,
+      notification_channel: process.env.TELEGRAM_NOTIFICATION_CHANNEL!,
+    },
   },
   admin_channels: process.env.MAKIMA_ADMIN_CHANNELS?.split(",") || [],
   notification_channel: process.env.MAKIMA_NOTIFICATION_CHANNEL!,

@@ -7,6 +7,7 @@ import { fs } from "zx";
 import { Document } from "langchain/document";
 import { isInLimit } from "..";
 import { makima_config } from "@/config";
+import { nanoid } from "nanoid";
 
 // const embeddings = new OllamaEmbeddings({
 //   model: "mistral",
@@ -51,9 +52,7 @@ export async function save_user_memory(
 
   if (!exists) {
     notifyChannel(`New memory space: ${memory_space}`);
-    const id = String(
-      context?.meta ? JSON.stringify(context.meta) : Math.random()
-    );
+    const id = String(nanoid());
     const tmp = await FaissStore.fromDocuments(
       [
         new Document({
@@ -70,8 +69,7 @@ export async function save_user_memory(
           pageContent: `
           context: ${ai_context}
           content: ${content}
-          timestamp: ${Date.now()}
-          data_context: ${JSON.stringify(context)}`,
+          timestamp: ${Date.now()}`,
           metadata: { id },
         }),
       ],
@@ -96,17 +94,14 @@ export async function save_user_memory(
     active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   try {
-    const id = String(
-      context?.meta ? JSON.stringify(context.meta) : Math.random()
-    );
+    const id = String(nanoid());
     const ids = await vectorStore.addDocuments(
       [
         new Document({
           pageContent: `
           context: ${ai_context}
           content: ${content}
-          timestamp: ${Date.now()}
-          data_context: ${JSON.stringify(context)}`,
+          timestamp: ${Date.now()}`,
           metadata: { id },
         }),
       ],
@@ -118,7 +113,7 @@ export async function save_user_memory(
       `Memory saved to: ${memory_space}, id: ${id}, content: ${content}`
     );
     console.log("Memory saved");
-    return "memory saved";
+    return `memory saved with id: ${id}`;
   } catch (err) {
     console.log("Error saving memory:", err);
     return `Error saving memory: ${err}`;
@@ -126,7 +121,7 @@ export async function save_user_memory(
 }
 
 export async function recall_user_memory(
-  { content }: { content: string },
+  { content, count }: { content: string; count: string },
   context?: ContextType
 ) {
   const memory_space = context?.channel_id || context?.user || "general";
@@ -155,7 +150,10 @@ export async function recall_user_memory(
     active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   notifyChannel(`Loading from space: ${memory_space}`);
-  const resultOne = await vectorStore.similaritySearch(content, 4);
+  const resultOne = await vectorStore.similaritySearch(
+    content,
+    isNaN(Number(count)) ? 4 : Number(count)
+  );
   notifyChannel(
     `found ${resultOne.length} memories: 
   ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}\n`
@@ -163,12 +161,12 @@ export async function recall_user_memory(
   console.log(resultOne);
   return `found ${resultOne.length} memories: 
   ${resultOne
-    .map((r) => r.pageContent)
-    .join("\nnext memory:\n")}\n format as markdown`;
+    .map((r) => `memory_id: ${r.metadata.id}\nmemory_content: ${r.pageContent}`)
+    .join("\nnext_memory\n")}`;
 }
 
 export async function forget_user_memory(
-  { content }: { content: string },
+  { memory_id }: { memory_id: string },
   context?: ContextType
 ) {
   const memory_space = context?.channel_id || context?.user || "general";
@@ -200,19 +198,19 @@ export async function forget_user_memory(
         store: vectorStore,
       });
 
-    const resultOne = await vectorStore.similaritySearch(content, 1);
+    // const resultOne = await vectorStore.similaritySearch(content);
 
-    console.log("Forgetting: ", resultOne, resultOne[0].metadata.id);
-    console.log(
-      "IDS: ",
-      resultOne.map((d) => d.metadata.id || String(d.metadata))
-    );
+    // console.log("Forgetting: ", resultOne, resultOne[0].metadata.id);
+    // console.log(
+    //   "IDS: ",
+    //   resultOne.map((d) => d.metadata.id || String(d.metadata))
+    // );
     await vectorStore.delete({
-      ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
+      ids: [memory_id],
     });
     await vectorStore.save(embeddingsDirectory);
 
-    notifyChannel(`Memory forgotten: ${resultOne[0].pageContent}`);
+    notifyChannel(`Memory forgotten: ${memory_id}`);
     console.log("Memory forgotten");
     return "Memory forgotten";
   } catch (error) {
@@ -224,10 +222,10 @@ export async function forget_user_memory(
 
 export async function update_user_memory(
   {
-    content,
+    memory_id,
     updated_content,
     context: ai_context,
-  }: { content: string; updated_content: string; context: string },
+  }: { memory_id: string; updated_content: string; context: string },
   context?: ContextType
 ) {
   const memory_space = context?.channel_id || context?.user || "general";
@@ -259,20 +257,23 @@ export async function update_user_memory(
         store: vectorStore,
       });
 
-    const resultOne = await vectorStore.similaritySearch(content, 1);
+    // const resultOne = await vectorStore.similaritySearch(content);
 
-    console.log("Updating: ", resultOne, resultOne[0].metadata.id);
-    console.log(
-      "IDS: ",
-      resultOne.map((d) => d.metadata.id || String(d.metadata))
-    );
-    await vectorStore.delete({
-      ids: resultOne.map((d) => d.metadata.id || String(d.metadata)),
-    });
+    // console.log("Updating: ", resultOne, resultOne[0].metadata.id);
+    // console.log(
+    //   "IDS: ",
+    //   resultOne.map((d) => d.metadata.id || String(d.metadata))
+    // );
+    // check if memory_id exists
+    if (!vectorStore.getDocstore().search(memory_id)) {
+      return `Memory with id: ${memory_id} does not exist, cant update`;
+    }
+    memory_id &&
+      (await vectorStore.delete({
+        ids: [memory_id],
+      }));
 
-    const id = String(
-      context?.meta ? JSON.stringify(context.meta) : Math.random()
-    );
+    const id = String(nanoid());
     await vectorStore.addDocuments(
       [
         new Document({
@@ -280,7 +281,6 @@ export async function update_user_memory(
           context: ${ai_context}
           updated_content: ${updated_content}
           updated_timestamp: ${Date.now()}
-          updated_data_context: ${JSON.stringify(context)}
           `,
           metadata: { id },
         }),
@@ -292,7 +292,7 @@ export async function update_user_memory(
 
     notifyChannel(`Memory updated`);
     console.log("Memory updated");
-    return "Memory updated";
+    return `Memory updated and new memory_id is ${id}`;
   } catch (error) {
     notifyChannel(`Error updating memory: ${error}`);
     console.log("Error updating memory:", error);

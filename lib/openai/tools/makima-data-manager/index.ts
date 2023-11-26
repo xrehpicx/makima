@@ -38,8 +38,8 @@ export async function save_to_memory_space(
 
   const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const docs = await splitter.createDocuments([
-    `${content}
-    data_context: ${JSON.stringify(context)}`,
+    `content: ${content}
+    timestamp: ${Date.now()}`,
   ]);
 
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
@@ -125,7 +125,11 @@ export async function save_memories_to_memory_space(
 }
 
 export async function save_makima_memory(
-  { content, memory_space }: { content: string; memory_space?: string },
+  {
+    content,
+    memory_space,
+    context: ai_context,
+  }: { content: string; memory_space?: string; context: string },
   context?: ContextType
 ) {
   if (
@@ -170,8 +174,10 @@ export async function save_makima_memory(
     await tmp.addDocuments(
       [
         new Document({
-          pageContent: `${content}
-          data_context: ${JSON.stringify(context)}`,
+          pageContent: `
+          context: ${ai_context}
+          content: ${content}
+          timestamp: ${Date.now()}`,
           metadata: { id },
         }),
       ],
@@ -202,8 +208,10 @@ export async function save_makima_memory(
     const ids = await vectorStore.addDocuments(
       [
         new Document({
-          pageContent: `${content}
-          data_context: ${JSON.stringify(context)}`,
+          pageContent: `
+          context: ${ai_context}
+          content: ${content}
+          timestamp: ${Date.now()}`,
           metadata: { id },
         }),
       ],
