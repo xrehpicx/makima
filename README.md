@@ -11,8 +11,9 @@ A chat bot with customizable interfaces it can be interacted through, with basic
 To install dependencies:
 
 ```bash
-bun install
+npm install
 ```
+Sticking with npm as it has better compatability with installing packages that need `libxmljs` / `node-gyp`
 
 To run:
 

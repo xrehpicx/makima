@@ -387,7 +387,7 @@ async function resolve_tools(
     response.message.tool_calls &&
     response.message.tool_calls.length
   ) {
-    const tools_results = await Promise.all(
+    const tools_results = await Promise.allSettled(
       response.message.tool_calls?.map(async (tool) => {
         console.log(
           "Calling: ",
@@ -397,6 +397,7 @@ async function resolve_tools(
         );
 
         let res = await runTool(tool, context);
+        console.log("why is this here?::: ", res);
 
         if (isInLimit(messages.concat(res), 16000)) {
           return res;
@@ -427,7 +428,19 @@ async function resolve_tools(
       })
     );
 
-    messages = messages.concat(tools_results);
+    messages = messages.concat(
+      tools_results
+        .filter((r) => {
+          console.log(r);
+          return r.status === "fulfilled";
+        })
+        .map(
+          (r) =>
+            (r.status === "fulfilled"
+              ? (r.value as OpenAI.Chat.Completions.ChatCompletionMessageParam)
+              : undefined)!
+        )
+    );
 
     // if (enable_fallback && !isInLimit(updatedThread.messages, 16000)) {
     //   console.log("Context too long switching to: ", large_context_model);

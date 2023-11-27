@@ -126,32 +126,48 @@ export async function recall_user_memory(
 ) {
   console.log("recalling user memory", content);
   const memory_space = context?.channel_id || context?.user || "general";
+  console.log("memory space:", memory_space);
   const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
+  console.log("embeddings directory:", embeddingsDirectory);
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
+  console.log("memory exists:", exists);
   const embeddings = new OpenAIEmbeddings({
     configuration: {
-      fetch: (url, init) => fetch(url, { ...init, signal: context?.signal }),
+      fetch: (url, init) => {
+        console.log("embeddings fetching url:", url);
+        return fetch(url, { ...init, signal: context?.signal });
+      },
     },
   });
+  console.log("embeddings created");
   if (!exists) {
     notifyChannel(`New memory space: ${memory_space}`);
     console.log("This is a new user, no memories saved yet");
     return "This is a new user, no memories saved yet";
   }
 
+  console.log("loading vectorStore");
   const cachedVectorStore = active_memory_spaces.find(
     (s) => s.id === embeddingsDirectory
   )?.store;
 
-  const vectorStore =
-    cachedVectorStore ??
-    (await FaissStore.load(embeddingsDirectory, embeddings));
+  console.log(
+    "loded vectorStore cachedVectorStore",
+    cachedVectorStore,
+    embeddingsDirectory
+  );
 
-  if (!cachedVectorStore)
+  const vectorStore = await FaissStore.load(embeddingsDirectory, embeddings);
+
+  console.log("loded vectorStore", vectorStore);
+
+  if (!cachedVectorStore) {
+    console.log("pushing to active_memory_spaces");
     active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
+  }
 
-  notifyChannel(`Loading from space: ${memory_space}`);
   console.log("searching in space: ", memory_space, content);
+  notifyChannel(`Loading from space: ${memory_space}`);
   const resultOne = await vectorStore.similaritySearch(
     content,
     isNaN(Number(count)) ? 4 : Number(count)
@@ -160,7 +176,7 @@ export async function recall_user_memory(
     `found ${resultOne.length} memories: 
   ${resultOne.map((r) => r.pageContent).join("\nnext memory:\n")}\n`
   );
-  console.log(resultOne);
+  console.log("found memories:", resultOne);
   return `found ${resultOne.length} memories: 
   ${resultOne
     .map((r) => `memory_id: ${r.metadata.id}\nmemory_content: ${r.pageContent}`)

@@ -330,6 +330,7 @@ export async function runTool(
   }
 
   try {
+    console.log("args:", validated_args);
     let tool_res = await tools_map[tool.function.name](validated_args, context);
     console.log("raw_res: ", tool_res);
     tool_res = JSON.stringify(tool_res);
@@ -341,6 +342,7 @@ export async function runTool(
     };
     return res;
   } catch (error) {
+    console.log(error);
     return {
       role: "tool",
       tool_call_id: tool.id,
