@@ -65,7 +65,6 @@ Units: Metric system`,
 Avoid asking open-ended questions. Respond to queries with yes/no or single-word answerable questions.`,
   },
 ];
-// Your mission is to assist the user with any task, and your main Ubuntu tools include docker (for checking service statuses), systemctl, etc.
 
 export type ContextType = {
   user: string;

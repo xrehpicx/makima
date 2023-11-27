@@ -1,11 +1,11 @@
 import { makima_config } from "@/config";
 import { ai } from "@/lib/openai";
-import { Context, NarrowedContext, Telegraf, Types } from "telegraf";
+import { Context, Telegraf } from "telegraf";
 import { message } from "telegraf/filters";
 import { notifyChannel } from "../discord";
 import { clearThread } from "@/lib/openai/threads";
 import { nanoid } from "nanoid";
-import { memory_manager } from "@/lib/openai/tools/memory_agent";
+import { memory_manager } from "@/lib/agents/memory_agent";
 
 let messages_que: { id: number; controller: AbortController }[] = [];
 export function openai_telegram_interface_init(bot: Telegraf<Context>) {

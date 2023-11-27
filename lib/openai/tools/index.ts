@@ -18,9 +18,10 @@ import { get_youtube_video_data } from "./webtools/youtube";
 import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
 import { $ } from "zx";
-import { memory_manager, message_user } from "./memory_agent";
+import { memory_manager, message_user } from "../../agents/memory_agent";
 import { search } from "./search";
 import { get_link_meta_data } from "./get-meta-data";
+import { get_examples_from_feedback, save_feedback } from "@/lib/agents/learn";
 
 const [clock, clockSchema] = createClock();
 const [calculator, calculatorSchema] = createCalculator();
@@ -52,6 +53,10 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     memory_manager,
 
     search,
+
+    // learn
+    save_feedback,
+    get_examples_from_feedback,
   };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
@@ -288,6 +293,58 @@ Examples:
       },
     },
   },
+
+  // TODO: move web related tools to separate agent
+
+  // learning tools
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "save_feedback",
+  //     description: `Save all positive conversations samples to reference later.
+  //     Can also save examples of what todo and what not to do in a conversation.
+  //     This should be run implicitly in the background.
+  //     Do not inform the user that this is happening unless the user explicitly asked for a change in behavior.
+
+  //     Examples:
+  //     user: example message
+  //     assistant: your example response
+  //     user: example user feedback response
+  //     save_feedback: {
+  //       feedback: \`context: user said example response i replied with summary of your response
+  //                   feedback: "example user feedback response"\`
+  //     }
+  //     `,
+  //     parameters: {
+  //       type: "object",
+  //       properties: {
+  //         feedback: {
+  //           type: "string",
+  //           description: "The feedback to save, along with example messages",
+  //         },
+  //       },
+  //       required: ["feedback"],
+  //     },
+  //   },
+  // },
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "get_examples_from_feedback",
+  //     description: `Search examples from the feedback saved.
+  //     Use this to search through all the feedback saved and get examples of what to do and what not to do.`,
+  //     parameters: {
+  //       type: "object",
+  //       properties: {
+  //         query: {
+  //           type: "string",
+  //           description: "The query to search",
+  //         },
+  //       },
+  //       required: ["query"],
+  //     },
+  //   },
+  // },
 ];
 
 // export const auto_tools

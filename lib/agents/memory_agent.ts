@@ -1,9 +1,9 @@
 import { notifyChannel, sendSystemMessage } from "@/interfaces/discord";
 import OpenAI from "openai";
 import { Readable } from "openai/_shims/index.mjs";
-import { ContextType } from "..";
-import { isInLimit, runTool } from ".";
-import { save_to_memory_space } from "./makima-data-manager";
+import { ContextType } from "../openai";
+import { isInLimit, runTool } from "../openai/tools";
+import { save_to_memory_space } from "../openai/tools/makima-data-manager";
 import { notify_telegram_channel } from "@/interfaces/telegram";
 
 const agent_tools: OpenAI.ChatCompletionTool[] = [
@@ -14,7 +14,6 @@ const agent_tools: OpenAI.ChatCompletionTool[] = [
       description: `Used to save a memory about a user.
       Use only when explicitly asked to do so or there are no similar memories to append to.
       `,
-
       parameters: {
         type: "object",
         properties: {
@@ -70,9 +69,8 @@ const agent_tools: OpenAI.ChatCompletionTool[] = [
     function: {
       name: "update_user_memory",
       description: `Update a memory about a user.
-      Append to existing memories instead of replacing them.
+      Try to Append to existing memories instead of replacing them when possible.
       `,
-
       parameters: {
         type: "object",
         properties: {
@@ -114,20 +112,6 @@ const agent_tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
-  // {
-  //   type: "function",
-  //   function: {
-  //     name: "delete_all_user_memories",
-  //     description:
-  //       "Can be used to delete all user memories at once. Use only when explicitly asked to do so.",
-  //     parameters: {
-  //       type: "object",
-  //       properties: {},
-  //       required: [],
-  //     },
-  //   },
-  // },
-
   {
     type: "function",
     function: {
