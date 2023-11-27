@@ -22,7 +22,7 @@ export async function schedule_task(
     return "Invalid time format. Please use a valid ISO time string.";
   }
 
-  if ((scheduledTime.getTime() - Date.now()) < 0) {
+  if (scheduledTime.getTime() - Date.now() < 0) {
     console.log(
       scheduledTime.getTime() - Date.now(),
       "ms",
@@ -39,7 +39,7 @@ export async function schedule_task(
     )} for channel: ${channel_id} and user: ${context?.user}`
   );
 
-  setTimeout(async () => {
+  const schedule = setTimeout(async () => {
     notifyChannel(
       `Running scheduled task: ${task_description} at ${format(
         scheduledTime,

@@ -24,6 +24,8 @@ import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
 import { $ } from "zx";
 import { memory_manager, message_user } from "./memory_agent";
+import { search } from "./search";
+import { get_link_meta_data } from "./get-meta-data";
 
 const [clock, clockSchema] = createClock();
 const [calculator, calculatorSchema] = createCalculator();
@@ -35,6 +37,8 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     calculator,
 
     shell,
+
+    get_link_meta_data,
 
     get_user_context,
 
@@ -56,6 +60,8 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
 
     // agents
     memory_manager,
+
+    search,
   };
 
 export const tools: OpenAI.ChatCompletionTool[] = [
@@ -68,6 +74,23 @@ export const tools: OpenAI.ChatCompletionTool[] = [
         type: "object",
         properties: {},
         required: [],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_link_meta_data",
+      description: "Get the meta data of a link",
+      parameters: {
+        type: "object",
+        properties: {
+          link: {
+            type: "string",
+            description: "The link to get meta data of",
+          },
+        },
+        required: ["link"],
       },
     },
   },
@@ -201,6 +224,46 @@ Examples:
   },
 
   // web tools
+  {
+    type: "function",
+    function: {
+      name: "search",
+      description: `Search the web and get results on current affairs, news, images, videos, recipes, shopping, jobs, and more.
+      Examples:
+      1. user: whats going on with open ai?
+         query: OpenAI
+         type: news_results
+      2. Nearest restaurants
+          query: restaurants near me
+          type: local_results
+      `,
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "The query to search",
+          },
+          type: {
+            type: "string",
+            description: "The type of search results to return",
+            enum: [
+              "news_results",
+              "organic_results",
+              "local_results",
+              "knowledge_graph",
+              "recipes_results",
+              "shopping_results",
+              "jobs_results",
+              "inline_videos",
+              "inline_images",
+            ],
+          },
+        },
+        required: ["query", "type"],
+      },
+    },
+  },
   {
     type: "function",
     function: {

@@ -115,19 +115,19 @@ const agent_tools: OpenAI.ChatCompletionTool[] = [
       },
     },
   },
-  {
-    type: "function",
-    function: {
-      name: "delete_all_user_memories",
-      description:
-        "Can be used to delete all user memories at once. Use only when explicitly asked to do so.",
-      parameters: {
-        type: "object",
-        properties: {},
-        required: [],
-      },
-    },
-  },
+  // {
+  //   type: "function",
+  //   function: {
+  //     name: "delete_all_user_memories",
+  //     description:
+  //       "Can be used to delete all user memories at once. Use only when explicitly asked to do so.",
+  //     parameters: {
+  //       type: "object",
+  //       properties: {},
+  //       required: [],
+  //     },
+  //   },
+  // },
 
   // the bots own memory
   {

@@ -18,9 +18,9 @@ const openai = new OpenAI({
   timeout: 15000,
 });
 
-const default_model = "gpt-3.5-turbo-1106";
+export const default_model = "gpt-3.5-turbo-1106";
 // const default_model = "gpt-4-1106-preview";
-const large_context_model = "gpt-4-1106-preview";
+export const large_context_model = "gpt-4-1106-preview";
 const enable_fallback = false;
 
 // Use async/await instead of then
@@ -59,6 +59,8 @@ Units: Metric system`,
     content: `General Purpose Usecases:
 1. Gym progress tracking: Record in the format of exercise_name: weight x reps. Keep all progress in a single memory for easy recall and updating.
 2. List tracking with numbers/counts (e.g., shopping, todo). Each list is a single memory.
+3. Keep track of important dates and events. Each event is a single memory.
+4. Keep track of links and resources. Each link with its metadata (optional) is a single memory. get link metadata using the get_link_meta_data tool. by default save all the links to user's memory with or without its meta data.
 
 Avoid asking open-ended questions. Respond to queries with yes/no or single-word answerable questions.`,
   },

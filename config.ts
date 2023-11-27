@@ -26,6 +26,9 @@ const makimaConfigSchema = z.object({
     working_dir: z.string(),
     memory_dir: z.string(),
   }),
+  agents: z.object({
+    search_api_key: z.string(),
+  }),
 });
 
 // Retrieve environment variables and parse them
@@ -52,6 +55,9 @@ export const makima_config = {
     shell_password: process.env.MAKIMA_SHELL_PASSWORD!,
     working_dir: process.env.MAKIMA_WORKING_DIR!,
     memory_dir: process.env.MAKIMA_MEMORY_DIR!,
+  },
+  agents: {
+    search_api_key: process.env.SEARCH_API_KEY!,
   },
 };
 

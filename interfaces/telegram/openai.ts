@@ -9,6 +9,10 @@ import { memory_manager } from "@/lib/openai/tools/memory_agent";
 
 let messages_que: { id: number; controller: AbortController }[] = [];
 export function openai_telegram_interface_init(bot: Telegraf<Context>) {
+  bot.textMention("makima", (ctx) => {
+    ctx.reply("Yes?");
+  });
+
   bot.command("clear", async (ctx) => {
     if (
       ctx.message.from.username ===

@@ -124,6 +124,7 @@ export async function recall_user_memory(
   { content, count }: { content: string; count: string },
   context?: ContextType
 ) {
+  console.log("recalling user memory", content);
   const memory_space = context?.channel_id || context?.user || "general";
   const embeddingsDirectory = `${makima_config.env.memory_dir}/embeddings/${memory_space}`;
   const exists = await fs.exists(`${embeddingsDirectory}/docstore.json`);
@@ -150,6 +151,7 @@ export async function recall_user_memory(
     active_memory_spaces.push({ id: embeddingsDirectory, store: vectorStore });
 
   notifyChannel(`Loading from space: ${memory_space}`);
+  console.log("searching in space: ", memory_space, content);
   const resultOne = await vectorStore.similaritySearch(
     content,
     isNaN(Number(count)) ? 4 : Number(count)
