@@ -13,12 +13,7 @@ import {
   save_user_memory,
   update_user_memory,
 } from "./user-data-manager";
-import {
-  forget_makima_memory,
-  forget_memory_space,
-  recall_makima_memory,
-  save_makima_memory,
-} from "./makima-data-manager";
+
 import { get_youtube_video_data } from "./webtools/youtube";
 import { webscrape } from "./webtools/scrape";
 import { encodeChat } from "gpt-tokenizer";
@@ -49,11 +44,6 @@ export const tools_map: Record<string, (p: any, context?: ContextType) => any> =
     delete_all_user_memories,
 
     message_user,
-
-    save_makima_memory,
-    recall_makima_memory,
-    forget_makima_memory,
-    forget_memory_space,
 
     get_youtube_video_data,
     webscrape,

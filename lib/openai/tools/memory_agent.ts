@@ -5,7 +5,6 @@ import { ContextType } from "..";
 import { isInLimit, runTool } from ".";
 import { save_to_memory_space } from "./makima-data-manager";
 import { notify_telegram_channel } from "@/interfaces/telegram";
-import { updateThread } from "../threads";
 
 const agent_tools: OpenAI.ChatCompletionTool[] = [
   {
@@ -129,97 +128,6 @@ const agent_tools: OpenAI.ChatCompletionTool[] = [
   //   },
   // },
 
-  // the bots own memory
-  {
-    type: "function",
-    function: {
-      name: "save_makima_memory",
-      description: `Save Makima's memories.
-      Examples:
-      1. user: "Im running on a machine server with 4 cores"
-        save_makima_memory({ content: "running on a machine server with 4 cores" })
-      `,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to save",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "recall_makima_memory",
-      description: `Recall Makima's memories for makima.
-      Examples:
-      1. user: "what is my machine server specs"
-        recall_makima_memory({ content: "machine server specs" })
-      2. user: "search test term in tools_id_1321431412 memory_space"
-        recall_makima_memory({ memory_space: "tools_id_1321431412", content: "test term" })
-      `,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to recall",
-          },
-          memory_space: {
-            type: "string",
-            description: "The memory_space to recall from",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "forget_makima_memory",
-      description: `Used to forget a memory about makima. Use only when explicitly asked to do so.
-      Examples:
-      1. user: "forget that I am running on a machine server with 4 cores"
-        forget_makima_memory({ content: "running on a machine server with 4 cores" })
-      `,
-      parameters: {
-        type: "object",
-        properties: {
-          content: {
-            type: "string",
-            description: "The content to forget",
-          },
-        },
-        required: ["content"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "forget_memory_space",
-      description: `Forget an entire memory_space, use this only when a tool asks you to do so.
-      Example:
-      1. user: "forget memory_space: tools_id_1321431412"
-        forget_memory_space({ memory_space: "tools_id_1321431412" })
-      `,
-      parameters: {
-        type: "object",
-        properties: {
-          memory_space: {
-            type: "string",
-            description: "The memory_space to forget",
-          },
-        },
-        required: ["memory_space"],
-      },
-    },
-  },
   {
     type: "function",
     function: {
