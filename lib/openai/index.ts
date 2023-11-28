@@ -365,6 +365,8 @@ function complete(
 
   res_promise.then((res) => {
     const useage = res.usage;
+
+    // const diff = estimated_internally - useage?.total_tokens!;
     useage &&
       sendSystemMessage(`
       prompt: ${useage.prompt_tokens}

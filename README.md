@@ -25,7 +25,7 @@ This project was created using `bun init` in bun v1.0.11. [Bun](https://bun.sh) 
 
 ### Todo
 
-[ ] Move to architecture to agent architecture to save on prompt token size bloated by tool declarations
+[ x ] Move to architecture to agent architecture to save on prompt token size bloated by tool declarations
 
 [ ] Make scheduling be tied to system cron.
 
