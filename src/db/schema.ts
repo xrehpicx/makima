@@ -7,6 +7,7 @@ import {
   integer,
   vector,
   boolean,
+  json,
 } from "drizzle-orm/pg-core";
 
 export const apiKeys = pgTable("api_keys", {
@@ -41,7 +42,7 @@ export const messages = pgTable("messages", {
   role: text("role").notNull(),
   content: text("content"),
   tool_call_id: text("tool_call_id"),
-  tool_calls: text("tool_calls"),
+  tool_calls: json("tool_calls"),
   name: text("name"),
 });
 

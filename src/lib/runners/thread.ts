@@ -1,5 +1,5 @@
 import { getAssistant } from "../../db/assistants";
-import { getMessages, getThread } from "../../db/threads";
+import { createMessage, getMessages, getThread } from "../../db/threads";
 import OpenAI from "openai";
 import { toolsRegistry } from "../tools";
 
@@ -53,11 +53,47 @@ export async function runThread({
 
   const finalMessages = [...systemMessages, ...formattedMessages];
 
-  const runner = openai.beta.chat.completions.runTools({
-    model: assistant.model ?? "gpt-4o",
-    messages: finalMessages,
-    tools: toolsRegistry,
-  });
+  const runner = openai.beta.chat.completions
+    .runTools({
+      model: assistant.model ?? "gpt-4o",
+      messages: finalMessages,
+      tools: toolsRegistry,
+    })
+    .on("chatCompletion", async (completion) => {
+      const message = completion.choices[0].message;
+
+      const calledTools = message.role === "assistant" && message.tool_calls;
+
+      await createMessage({
+        content: Array.isArray(message.content)
+          ? JSON.stringify(message.content)
+          : message.content,
+        role: message.role,
+        threadId,
+        tool_calls: calledTools ? JSON.stringify(calledTools) : undefined,
+      });
+    })
+    .on("message", async (message) => {
+      const isToolMessage = message.role === "tool";
+      if (!isToolMessage) {
+        return;
+      }
+      const existingCall = finalMessages.find(
+        (m) => m.role === "tool" && m.tool_call_id === message.tool_call_id
+      );
+      if (existingCall) {
+        return;
+      }
+
+      await createMessage({
+        content: Array.isArray(message.content)
+          ? JSON.stringify(message.content)
+          : message.content,
+        role: message.role,
+        threadId,
+        tool_call_id: message.tool_call_id,
+      });
+    });
 
   const result = await runner.finalContent();
 

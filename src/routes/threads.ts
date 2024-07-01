@@ -5,6 +5,8 @@ import {
   createMessageSchema,
   createThread,
   createThreadSchema,
+  deleteMessage,
+  deleteMessages,
   deleteThread,
   disableThread,
   getAllThreads,
@@ -136,6 +138,31 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
         description: "Creates a new message",
         summary: `examples:
             curl -X POST http://localhost:6666/message -d '{"thread_id":1, "content":"hello"}' -H 'Content-Type: application/json'
+            `,
+      },
+    }
+  )
+  .delete(
+    "/",
+    async ({ body: { message_id, thread_id } }) => {
+      if (message_id) {
+        await deleteMessage(message_id);
+        return { message: "message deleted" };
+      }
+      if (thread_id) {
+        await deleteMessages(thread_id);
+        return { message: "messages deleted" };
+      }
+    },
+    {
+      body: t.Object({
+        message_id: t.Optional(t.Numeric()),
+        thread_id: t.Optional(t.Numeric()),
+      }),
+      detail: {
+        description: "Delete a message",
+        summary: `examples:
+            curl -X DELETE http://localhost:6666/message -d '{"message_id":1}' -H 'Content-Type: application/json'
             `,
       },
     }
