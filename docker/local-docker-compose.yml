@@ -1,0 +1,24 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: always
+    environment:
+      POSTGRES_USER: makima
+      POSTGRES_PASSWORD: makima
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+    ports:
+      - 6667:5432
+    networks:
+      - makima
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - 6668:6379
+    networks:
+      - makima
+
+networks:
+  makima:
+    driver: bridge

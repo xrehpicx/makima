@@ -1,0 +1,1 @@
+ALTER TABLE "assistant" ADD COLUMN "model" text DEFAULT 'gpt-4o';

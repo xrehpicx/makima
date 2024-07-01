@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1719761228208,
+      "tag": "0000_outgoing_doctor_faustus",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1719761555991,
+      "tag": "0001_harsh_rictor",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1719766563081,
+      "tag": "0002_ambiguous_mach_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1719767342560,
+      "tag": "0003_faulty_carlie_cooper",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1719770411187,
+      "tag": "0004_bent_runaways",
+      "breakpoints": true
+    }
+  ]
+}
