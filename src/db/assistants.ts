@@ -5,21 +5,12 @@ import { createInsertSchema } from "drizzle-typebox";
 import { Static, t } from "elysia";
 
 export const createAssistantSchema = createInsertSchema(assistant);
-export const updateAssistantSchema = t.Intersect([
-  t.Object({
-    name: t.String(),
-  }),
-  t.Union([
-    t.Object({
-      model: t.String(),
-      enabled: t.Optional(t.Boolean()),
-    }),
-    t.Object({
-      model: t.Optional(t.String()),
-      enabled: t.Boolean(),
-    }),
-  ]),
-]);
+export const updateAssistantSchema = t.Object({
+  name: t.String(),
+  prompt: t.Optional(t.String()),
+  model: t.Optional(t.String()),
+  enabled: t.Optional(t.Boolean()),
+});
 
 export function createAssistant(ass: Static<typeof createAssistantSchema>) {
   return db.insert(assistant).values(ass).execute();
