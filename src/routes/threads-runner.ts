@@ -59,7 +59,7 @@ threadRunnerHelper.post(
       threadId: thread_id,
     });
 
-    return await runThread(body);
+    return await runThread(body, true);
   },
   {
     body: runnerData,

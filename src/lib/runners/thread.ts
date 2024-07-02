@@ -1,17 +1,25 @@
 import { getAssistant } from "../../db/assistants";
-import { createMessage, getMessages, getThread } from "../../db/threads";
+import {
+  createMessage,
+  deleteMessage,
+  getMessages,
+  getThread,
+} from "../../db/threads";
 import OpenAI from "openai";
 import { toolsRegistry } from "../tools";
 
 const openai = new OpenAI();
 
-export async function runThread({
-  threadId,
-  assistantId,
-}: {
-  threadId: number;
-  assistantId: number;
-}) {
+export async function runThread(
+  {
+    threadId,
+    assistantId,
+  }: {
+    threadId: number;
+    assistantId: number;
+  },
+  automode?: boolean
+) {
   const thread = await getThread(threadId);
   if (!thread) {
     throw new Error("Thread not found");
@@ -53,6 +61,9 @@ export async function runThread({
 
   const finalMessages = [...systemMessages, ...formattedMessages];
 
+  // needs to be of type of the params of the function createMessage
+  const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
+
   const runner = openai.beta.chat.completions
     .runTools({
       model: assistant.model ?? "gpt-4o",
@@ -64,7 +75,7 @@ export async function runThread({
 
       const calledTools = message.role === "assistant" && message.tool_calls;
 
-      await createMessage({
+      messagesToCreate.push({
         content: Array.isArray(message.content)
           ? JSON.stringify(message.content)
           : message.content,
@@ -85,7 +96,7 @@ export async function runThread({
         return;
       }
 
-      await createMessage({
+      messagesToCreate.push({
         content: Array.isArray(message.content)
           ? JSON.stringify(message.content)
           : message.content,
@@ -95,7 +106,20 @@ export async function runThread({
       });
     });
 
-  const result = await runner.finalContent();
-
-  return result;
+  try {
+    const result = await runner.finalContent();
+    for (const message of messagesToCreate) {
+      await createMessage(message);
+    }
+    return result;
+  } catch (error) {
+    // delete last user message from thread
+    if (automode) {
+      await deleteMessage(messages[messages.length - 1].id);
+    }
+    console.error(error);
+    throw new Error(
+      "Error running thread, thread state restored to before run"
+    );
+  }
 }
