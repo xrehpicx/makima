@@ -1,5 +1,5 @@
 import Elysia, { t } from "elysia";
-import { runThread } from "../lib/runners/thread";
+import { runThread, threadsQueueController } from "../lib/runners/thread";
 import {
   checkThread,
   createMessage,
@@ -98,6 +98,8 @@ threadRunnerHelper.post(
     if (!assistant_exists) {
       throw new Error("Assistant not found");
     }
+
+    await threadsQueueController.waitForThread(thread_id);
 
     await createMessage({
       content: body.message.content,

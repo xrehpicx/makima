@@ -113,26 +113,20 @@ function runToolsAndHandleResponses(
   return { runner, messagesToCreate };
 }
 
-const threadsQueueController: {
-  threads: {
-    threadId: number;
-    threadRunner: ChatCompletionRunner;
-  }[];
-  getThread(
-    threadId: number
-  ): { threadId: number; threadRunner: ChatCompletionRunner } | undefined;
-  addThread(threadId: number, threadRunner: ChatCompletionRunner): void;
-  removeThread(threadId: number): void;
-} = {
-  threads: [],
-  getThread(threadId: number) {
-    return this.threads.find((t) => t.threadId === threadId);
+export const threadsQueueController = {
+  runningThreads: new Map<number, Promise<any>>(),
+
+  addThread(threadId: number, promise: Promise<any>) {
+    this.runningThreads.set(threadId, promise);
   },
-  addThread(threadId: number, threadRunner: ChatCompletionRunner) {
-    this.threads.push({ threadId, threadRunner });
-  },
+
   removeThread(threadId: number) {
-    this.threads = this.threads.filter((t) => t.threadId !== threadId);
+    this.runningThreads.delete(threadId);
+  },
+
+  waitForThread(threadId: number): Promise<void> {
+    const existingThread = this.runningThreads.get(threadId);
+    return existingThread ? existingThread : Promise.resolve();
   },
 };
 
@@ -146,42 +140,42 @@ export async function runThread(
   },
   automode?: boolean
 ) {
-  const { thread, assistant } = await validateEntities(threadId, assistantId);
+  await threadsQueueController.waitForThread(threadId);
 
-  const existingThread = threadsQueueController.getThread(threadId);
-
-  if (existingThread) {
-    await existingThread.threadRunner.finalContent();
-  }
-
-  const messages = await getMessages({ threadId });
-  const processedMessages = processMessages(messages, assistant);
-
-  const { runner, messagesToCreate } = runToolsAndHandleResponses(
-    threadId,
-    processedMessages,
-    assistant.model ?? "gpt-4o"
-  );
-
-  try {
-    await setRunningStatus(thread.name, 1);
-    threadsQueueController.addThread(threadId, runner);
-    const result = await runner.finalContent();
-    for (const message of messagesToCreate) {
-      await createMessage(message);
-    }
-    threadsQueueController.removeThread(threadId);
-    setRunningStatus(thread.name, 0);
-    return result;
-  } catch (error) {
-    threadsQueueController.removeThread(threadId);
-    setRunningStatus(thread.name, 0);
-    if (automode) {
-      await deleteMessage(messages[messages.length - 1].id);
-    }
-    console.error(error);
-    throw new Error(
-      "Error running thread, thread state restored to before run"
+  const threadPromise = (async () => {
+    const { thread, assistant } = await validateEntities(threadId, assistantId);
+    const messages = await getMessages({ threadId });
+    const processedMessages = processMessages(messages, assistant);
+    const { runner, messagesToCreate } = runToolsAndHandleResponses(
+      threadId,
+      processedMessages,
+      assistant.model ?? "gpt-4o"
     );
-  }
+    try {
+      await setRunningStatus(thread.name, 1);
+
+      const result = await runner.finalContent();
+      for (const message of messagesToCreate) {
+        await createMessage(message);
+      }
+
+      await setRunningStatus(thread.name, 0);
+      return result;
+    } catch (error) {
+      await setRunningStatus(thread.name, 0);
+      if (automode) {
+        await deleteMessage(messages[messages.length - 1].id);
+      }
+      console.error(error);
+      throw new Error(
+        "Error running thread, thread state restored to before run"
+      );
+    } finally {
+      threadsQueueController.removeThread(threadId);
+    }
+  })();
+
+  threadsQueueController.addThread(threadId, threadPromise);
+
+  return await threadPromise;
 }
