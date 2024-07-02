@@ -22,10 +22,8 @@ threadsRunnerRoutes.post(
     }),
     detail: {
       summary: "Run Thread",
-      description: `Run a thread
-      examples:
-            curl -X POST http://localhost:7777/thread/run -d '{"threadId":1, "assistantId":1}' -H 'Content-Type: application/json'
-            `,
+      description: `Run a thread with the specified threadId and assistantId.`,
+      tags: ["Threads"],
     },
   }
 );
@@ -119,10 +117,8 @@ threadRunnerHelper.post(
     body: runnerData,
     detail: {
       summary: "Auto run Thread",
-      description: `Run a thread with a message
-      examples:
-            curl -X POST http://localhost:7777/thread/auto -d '{"threadId":1, "assistantId":1, "message": {"content":"hello"}}' -H 'Content-Type: application/json'
-            `,
+      description: `Automatically runs a thread with a message. If the threadId and assistantId are provided, it runs the thread with the specified IDs. If the threadId and assistantId are not provided, it looks up the thread and assistant using their names and runs the thread if found.`,
+      tags: ["Auto threads"],
     },
   }
 );

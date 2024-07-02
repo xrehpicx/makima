@@ -27,7 +27,7 @@ threadsRoute
         const res = await getThreadByName(name);
         if (res.length === 0) {
           set.status = 404;
-          return { message: "thread not found" };
+          return { message: "Thread not found" };
         }
         return res[0];
       }
@@ -38,11 +38,10 @@ threadsRoute
         name: t.Optional(t.String()),
       }),
       detail: {
-        summary: "Get thread status",
-        description: `Get the status of a thread
-        examples:
-            curl -X GET http://localhost:7777/thread?name=bobandme
-            `,
+        summary: "Get Thread Status",
+        description:
+          "Get the status of a thread by name or retrieve all threads.",
+        tags: ["Threads"],
       },
     }
   )
@@ -50,16 +49,15 @@ threadsRoute
     "/",
     async ({ body }) => {
       const res = await createThread(body.name);
-      return { message: "thread created", data: res };
+      return { message: "Thread created", data: res };
     },
     {
       body: t.Omit(createThreadSchema, ["id"]),
       detail: {
         summary: "Create Thread",
-        description: `Creates a new thread
-        examples:
-        curl -X POST http://localhost:7777/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
-        `,
+        description:
+          "Create a new thread by specifying the name of the thread in the request body.",
+        tags: ["Threads"],
       },
     }
   )
@@ -71,7 +69,7 @@ threadsRoute
       }
 
       await disableThread(name);
-      return { message: "thread disabled, but the messages still exist" };
+      return { message: "Thread disabled, but the messages still exist" };
     },
     {
       body: t.Object({
@@ -80,12 +78,9 @@ threadsRoute
       }),
       detail: {
         summary: "Delete Thread",
-        description: `Delete a thread
-        examples:
-            curl -X DELETE http://localhost:7777/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
-
-            curl -X DELETE http://localhost:7777/thread -d '{"name":"bobandme", "force": true}' -H 'Content-Type: application/json'
-            `,
+        description:
+          "Delete a thread by name. Optionally, force delete the thread and its messages.",
+        tags: ["Threads"],
       },
     }
   );
@@ -95,7 +90,7 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
     "/",
     async ({ query: { thread_id }, set }) => {
       const exists = await checkThread(thread_id);
-      console.log("thread_id", thread_id, exists);
+      console.log("Checking if thread exists with ID:", thread_id, exists);
 
       if (!exists) {
         set.status = 404;
@@ -104,7 +99,11 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
 
       const messages = await getMessages({ threadId: thread_id });
 
-      console.log("messages", messages);
+      console.log(
+        "Retrieving messages for thread with ID:",
+        thread_id,
+        messages
+      );
 
       if (messages.length === 0) {
         set.status = 404;
@@ -119,10 +118,9 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
       }),
       detail: {
         summary: "Get Messages",
-        description: `Get the all messages of a thread
-        examples:
-            curl -X GET http://localhost:7777/message
-            `,
+        description:
+          "Get all messages of a thread by specifying the thread ID in the query parameters.",
+        tags: ["Messages"],
       },
     }
   )
@@ -131,7 +129,7 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
     async ({ body }) => {
       try {
         await createMessage(body);
-        return { message: "message created" };
+        return { message: "Message created successfully" };
       } catch (e) {
         throw e;
       }
@@ -140,10 +138,9 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
       body: t.Omit(createMessageSchema, ["id", "tool_call_id", "tool_calls"]),
       detail: {
         summary: "Create Message",
-        description: `Creates a new message
-        examples:
-            curl -X POST http://localhost:7777/message -d '{"thread_id":1, "content":"hello"}' -H 'Content-Type: application/json'
-            `,
+        description:
+          "Create a new message by specifying the message details in the request body.",
+        tags: ["Messages"],
       },
     }
   )
@@ -152,11 +149,11 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
     async ({ body: { message_id, thread_id } }) => {
       if (message_id) {
         await deleteMessage(message_id);
-        return { message: "message deleted" };
+        return { message: "Message deleted successfully" };
       }
       if (thread_id) {
         await deleteMessages(thread_id);
-        return { message: "messages deleted" };
+        return { message: "Messages deleted successfully" };
       }
     },
     {
@@ -166,10 +163,9 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
       }),
       detail: {
         summary: "Delete Message",
-        description: `Delete a message
-        examples:
-            curl -X DELETE http://localhost:7777/message -d '{"message_id":1}' -H 'Content-Type: application/json'
-            `,
+        description:
+          "Delete a message by specifying the message ID or delete all messages in a thread by specifying the thread ID.",
+        tags: ["Messages"],
       },
     }
   );

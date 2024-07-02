@@ -30,10 +30,8 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
       }),
       detail: {
         summary: "Get Assistants",
-        description: `Get the status of a assistant
-        examples:
-            curl -X GET http://localhost:7777/assistant?name=bob
-            `,
+        description: `Get the details of an assistant by name. If the 'name' query parameter is provided, it will return the assistant with the matching name. If no 'name' query parameter is provided, it will return all assistants.`,
+        tags: ["Assistant"],
       },
     }
   )
@@ -41,16 +39,15 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     "/",
     async ({ body }) => {
       const res = await createAssistant(body);
-      return { message: "assistant created", data: res[0] };
+      return { message: "Assistant created", data: res[0] };
     },
     {
       body: t.Omit(createAssistantSchema, ["id"]),
       detail: {
         summary: "Create Assistant",
-        description: `Creates a new assistant, the assistant will be enabled by default
-        examples:
-      curl -X POST http://localhost:7777/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
-      `,
+        description:
+          "Creates a new assistant with the provided details. The assistant will be enabled by default.",
+        tags: ["Assistant"],
       },
     }
   )
@@ -58,16 +55,14 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     "/",
     async ({ body }) => {
       await updateAssistant(body);
-      return { message: "assistant updated" };
+      return { message: "Assistant updated" };
     },
     {
       body: t.Omit(updateAssistantSchema, ["id"]),
       detail: {
         summary: "Update Assistant",
-        description: `Update an assistant
-        examples:
-      curl -X PATCH http://localhost:7777/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
-      `,
+        description: `Update an assistant with the provided details. The 'name' field is required to identify the assistant to be updated.`,
+        tags: ["Assistant"],
       },
     }
   )
@@ -76,10 +71,10 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     async ({ body: { name, permanent } }) => {
       if (permanent) {
         await deleteAssistant(name);
-        return { message: "assistant deleted" };
+        return { message: "Assistant deleted" };
       }
       await disableAssistant(name);
-      return { message: "assistant disabled" };
+      return { message: "Assistant disabled" };
     },
     {
       body: t.Object({
@@ -88,12 +83,8 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
       }),
       detail: {
         summary: "Delete Assistant",
-        description: `Disable an assistant
-        examples:
-      curl -X DELETE http://localhost:7777/assistant -d '{"name":"bob"}' -H 'Content-Type: application/json'
-
-      curl -X DELETE http://localhost:7777/assistant -d '{"name":"bob","permanent":true}' -H 'Content-Type: application/json'
-      `,
+        description: `Disable an assistant. If the 'permanent' flag is set to true, the assistant will be permanently deleted from the database. Otherwise, it will be disabled.`,
+        tags: ["Assistant"],
       },
     }
   );
