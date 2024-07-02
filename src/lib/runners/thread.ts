@@ -11,69 +11,66 @@ import { toolsRegistry } from "../tools";
 
 const openai = new OpenAI();
 
-export async function runThread(
-  {
-    threadId,
-    assistantId,
-  }: {
-    threadId: number;
-    assistantId: number;
-  },
-  automode?: boolean
-) {
+async function validateEntities(threadId: number, assistantId: number) {
   const thread = await getThread(threadId);
   if (!thread) {
     throw new Error("Thread not found");
   }
 
-  const messages = await getMessages({ threadId });
   const assistantRes = await getAssistant(assistantId);
-
   if (!assistantRes || assistantRes.length <= 0) {
     throw new Error("Assistant not found");
   }
 
-  if (!assistantRes[0].enabled) {
+  const assistant = assistantRes[0];
+  if (!assistant.enabled) {
     throw new Error("Assistant is disabled");
   }
 
-  const assistant = assistantRes[0];
+  return { thread, assistant };
+}
 
-  const systemMessages: OpenAI.ChatCompletionSystemMessageParam[] = [
-    {
-      role: "system",
-      content: `Your name is: ${assistant.name}
-      
-      ${assistant.prompt}
-      `,
-    },
-  ];
+function processMessages(
+  messages: Awaited<ReturnType<typeof getMessages>>,
+  assistant: Awaited<ReturnType<typeof getAssistant>>[0]
+) {
+  const systemMessage = {
+    role: "system",
+    content: `Your name is: ${assistant.name}
+    
+    ${assistant.prompt}
+    `,
+  };
 
   const formattedMessages: OpenAI.ChatCompletionMessageParam[] = messages.map(
-    (message) => {
-      return {
+    (message) =>
+      ({
         ...message,
         threadId: undefined,
         id: undefined,
         createdAt: undefined,
-      } as any;
-    }
+      } as unknown as OpenAI.ChatCompletionMessageParam)
   );
 
-  const finalMessages = [...systemMessages, ...formattedMessages];
+  return [
+    systemMessage,
+    ...formattedMessages,
+  ] as OpenAI.ChatCompletionMessageParam[];
+}
 
-  // needs to be of type of the params of the function createMessage
+async function runToolsAndHandleResponses(
+  threadId: number,
+  messages: OpenAI.ChatCompletionMessageParam[]
+) {
   const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
-
   const runner = openai.beta.chat.completions
     .runTools({
-      model: assistant.model ?? "gpt-4o",
-      messages: finalMessages,
+      model: "gpt-4o",
+      messages,
       tools: toolsRegistry,
     })
     .on("chatCompletion", async (completion) => {
       const message = completion.choices[0].message;
-
       const calledTools = message.role === "assistant" && message.tool_calls;
 
       messagesToCreate.push({
@@ -90,7 +87,7 @@ export async function runThread(
       if (!isToolMessage) {
         return;
       }
-      const existingCall = finalMessages.find(
+      const existingCall = messages.find(
         (m) => m.role === "tool" && m.tool_call_id === message.tool_call_id
       );
       if (existingCall) {
@@ -107,9 +104,30 @@ export async function runThread(
       });
     })
     .on("totalUsage", async (usage) => {
-      console.log("Total usage", usage);
       await updateUsage(threadId, usage);
     });
+
+  return { runner, messagesToCreate };
+}
+
+export async function runThread(
+  {
+    threadId,
+    assistantId,
+  }: {
+    threadId: number;
+    assistantId: number;
+  },
+  automode?: boolean
+) {
+  const { thread, assistant } = await validateEntities(threadId, assistantId);
+  const messages = await getMessages({ threadId });
+  const processedMessages = processMessages(messages, assistant);
+
+  const { runner, messagesToCreate } = await runToolsAndHandleResponses(
+    threadId,
+    processedMessages
+  );
 
   try {
     const result = await runner.finalContent();
@@ -118,7 +136,6 @@ export async function runThread(
     }
     return result;
   } catch (error) {
-    // delete last user message from thread
     if (automode) {
       await deleteMessage(messages[messages.length - 1].id);
     }
