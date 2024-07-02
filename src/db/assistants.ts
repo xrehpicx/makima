@@ -13,7 +13,7 @@ export const updateAssistantSchema = t.Object({
 });
 
 export function createAssistant(ass: Static<typeof createAssistantSchema>) {
-  return db.insert(assistant).values(ass).execute();
+  return db.insert(assistant).values(ass).returning().execute();
 }
 
 export function updateAssistant(ass: Static<typeof updateAssistantSchema>) {
@@ -35,6 +35,20 @@ export function getAssistantByName(name: string) {
     .select()
     .from(assistant)
     .where(sql`${assistant.name} = ${name}`);
+}
+
+export async function getAssistantID(name: string) {
+  const res = await db
+    .select({ id: assistant.id })
+    .from(assistant)
+    .where(sql`${assistant.name} = ${name}`)
+    .execute();
+
+  if (res.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  return res[0].id;
 }
 
 export function getAllAssistants() {

@@ -13,7 +13,7 @@
   "scripts": {
     "dev": "bun --watch src/index.ts",
     "db:migrate": "bun run src/db/migrate.ts",
-    "db:gen": "bunx drizzle-kit generate",
+    "db:gen": "bunx --bun drizzle-kit generate",
     "build": "bun build src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "test": "bun test"

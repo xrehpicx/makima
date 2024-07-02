@@ -40,7 +40,7 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     "/",
     async ({ body }) => {
       const res = await createAssistant(body);
-      return { message: "assistant created", id: res.oid };
+      return { message: "assistant created", data: res[0] };
     },
     {
       body: t.Omit(createAssistantSchema, ["id"]),

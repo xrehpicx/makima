@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS "assistant" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
 	"prompt" text NOT NULL,
+	"model" text DEFAULT 'gpt-4o',
 	"enabled" boolean DEFAULT true,
 	CONSTRAINT "assistant_name_unique" UNIQUE("name")
 );
@@ -19,6 +20,8 @@ CREATE TABLE IF NOT EXISTS "documents" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"thread_id" integer NOT NULL,
 	"document" text NOT NULL,
+	"type" text NOT NULL,
+	"url" text NOT NULL,
 	"embedding" vector(1536) NOT NULL,
 	"created_at" timestamp DEFAULT now()
 );
@@ -26,8 +29,12 @@ CREATE TABLE IF NOT EXISTS "documents" (
 CREATE TABLE IF NOT EXISTS "messages" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"thread_id" integer NOT NULL,
-	"content" text NOT NULL,
-	"created_at" timestamp DEFAULT now()
+	"created_at" timestamp DEFAULT now(),
+	"role" text NOT NULL,
+	"content" text,
+	"tool_call_id" text,
+	"tool_calls" json,
+	"name" text
 );
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "threads" (
@@ -35,6 +42,7 @@ CREATE TABLE IF NOT EXISTS "threads" (
 	"name" text NOT NULL,
 	"created_at" timestamp DEFAULT now(),
 	"disabled" boolean DEFAULT false,
+	"usage" json,
 	CONSTRAINT "threads_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint

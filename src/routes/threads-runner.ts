@@ -1,7 +1,12 @@
 import Elysia, { t } from "elysia";
 import { runThread } from "../lib/runners/thread";
-import { checkThread, createMessage, createMessageSchema } from "../db/threads";
-import { checkAssistant } from "../db/assistants";
+import {
+  checkThread,
+  createMessage,
+  createMessageSchema,
+  getThreadID,
+} from "../db/threads";
+import { checkAssistant, getAssistantID } from "../db/assistants";
 
 export const threadsRunnerRoutes = new Elysia();
 
@@ -21,11 +26,13 @@ threadsRunnerRoutes.post(
 export const threadRunnerHelper = new Elysia({ prefix: "/auto" });
 
 const runnerData = t.Object({
-  threadId: t.Number(),
-  assistantId: t.Number(),
   message: t.Partial(
     t.Omit(createMessageSchema, ["threadId", "id", "createdAt"])
   ),
+  threadId: t.Optional(t.Number()),
+  assistantId: t.Optional(t.Number()),
+  threadName: t.Optional(t.String()),
+  assistantName: t.Optional(t.String()),
 });
 
 threadRunnerHelper.post(
@@ -35,11 +42,45 @@ threadRunnerHelper.post(
       throw new Error("Message content is required");
     }
 
-    const thread_id = body.threadId;
+    let thread_id = body.threadId;
+    let thread_exists = false;
 
-    const thread_exists = await checkThread(thread_id);
+    if (!thread_id) {
+      if (!body.threadName) {
+        throw new Error("Thread name is required");
+      }
 
-    const assistant_exists = await checkAssistant(body.assistantId);
+      const threadId = await getThreadID(body.threadName);
+
+      if (!threadId) {
+        throw new Error("Thread not found");
+      }
+      thread_exists = true;
+      thread_id = threadId;
+    } else {
+      thread_exists = await checkThread(thread_id);
+    }
+
+    let assistant_id = body.assistantId;
+    let assistant_exists = false;
+
+    if (!assistant_id) {
+      if (!body.assistantName) {
+        throw new Error("Assistant name is required");
+      }
+
+      const assistantId = await getAssistantID(body.assistantName);
+
+      if (!assistantId) {
+        throw new Error("Assistant not found");
+      }
+
+      assistant_exists = true;
+
+      assistant_id = assistantId;
+    } else {
+      assistant_exists = await checkAssistant(assistant_id);
+    }
 
     if (!thread_exists && !assistant_exists) {
       throw new Error("Thread and Assistant not found");
@@ -59,7 +100,13 @@ threadRunnerHelper.post(
       threadId: thread_id,
     });
 
-    return await runThread(body, true);
+    return await runThread(
+      {
+        threadId: thread_id,
+        assistantId: assistant_id,
+      },
+      true
+    );
   },
   {
     body: runnerData,

@@ -1,6 +1,6 @@
 {
-  "id": "8f47e6bc-c090-440c-a3df-e1f2ff2ec07d",
-  "prevId": "3b25ecc4-4b55-4432-ae0b-79d07b33bb7e",
+  "id": "05a47184-b5c3-4e97-9ba6-8447c50033c2",
+  "prevId": "147cfc70-228f-43a3-9094-acdd26e06eef",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -76,6 +76,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'gpt-4o'"
+        },
         "enabled": {
           "name": "enabled",
           "type": "boolean",
@@ -115,6 +122,18 @@
         },
         "document": {
           "name": "document",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "url": {
+          "name": "url",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -168,18 +187,42 @@
           "primaryKey": false,
           "notNull": true
         },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
           "default": "now()"
+        },
+        "role": {
+          "name": "role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tool_call_id": {
+          "name": "tool_call_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tool_calls": {
+          "name": "tool_calls",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -230,6 +273,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": false
+        },
+        "usage": {
+          "name": "usage",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},

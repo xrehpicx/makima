@@ -4,6 +4,7 @@ import {
   deleteMessage,
   getMessages,
   getThread,
+  updateUsage,
 } from "../../db/threads";
 import OpenAI from "openai";
 import { toolsRegistry } from "../tools";
@@ -104,6 +105,10 @@ export async function runThread(
         threadId,
         tool_call_id: message.tool_call_id,
       });
+    })
+    .on("totalUsage", async (usage) => {
+      console.log("Total usage", usage);
+      await updateUsage(threadId, usage);
     });
 
   try {

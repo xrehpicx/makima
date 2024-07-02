@@ -31,6 +31,7 @@ export const threads = pgTable("threads", {
   name: text("name").notNull().unique(),
   createdAt: timestamp("created_at").defaultNow(),
   disabled: boolean("disabled").default(false),
+  usage: json("usage"),
 });
 
 export const messages = pgTable("messages", {

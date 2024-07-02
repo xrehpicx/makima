@@ -49,7 +49,7 @@ threadsRoute
     "/",
     async ({ body }) => {
       const res = await createThread(body.name);
-      return { message: "thread created", id: res.oid };
+      return { message: "thread created", data: res };
     },
     {
       body: t.Omit(createThreadSchema, ["id"]),

@@ -4,6 +4,7 @@ import { threads, messages } from "./schema";
 import { sql } from "drizzle-orm";
 import { redisClient } from "./redis";
 import { t } from "elysia";
+import OpenAI from "openai";
 
 export const createThreadSchema = createInsertSchema(threads);
 export const createMessageSchema = createInsertSchema(messages, {
@@ -12,7 +13,24 @@ export const createMessageSchema = createInsertSchema(messages, {
 
 // threads controller
 export function createThread(name: string) {
-  return db.insert(threads).values({ name }).execute();
+  return db.insert(threads).values({ name }).returning().execute();
+}
+
+// identifier can be thread name or the thread id
+export function updateUsage(
+  identifier: string | number,
+  usage: OpenAI.Completions.CompletionUsage
+) {
+  let query;
+  if (typeof identifier === "string") {
+    query = sql`${threads.name} = ${identifier}`;
+  } else if (typeof identifier === "number") {
+    query = sql`${threads.id} = ${identifier}`;
+  } else {
+    throw new Error("Invalid identifier type");
+  }
+
+  return db.update(threads).set({ usage }).where(query).execute();
 }
 
 export function getThread(threadId: number) {
@@ -49,6 +67,20 @@ export async function checkThread(identifier: string | number) {
     .execute();
 
   return (res[0].count as number) > 0;
+}
+
+export async function getThreadID(name: string) {
+  const res = await db
+    .select({ id: threads.id })
+    .from(threads)
+    .where(sql`${threads.name} = ${name}`)
+    .execute();
+
+  if (res.length === 0) {
+    throw new Error("Thread not found");
+  }
+
+  return res[0].id;
 }
 
 export function getAllThreads() {
