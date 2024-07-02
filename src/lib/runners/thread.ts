@@ -4,16 +4,18 @@ import {
   deleteMessage,
   getMessages,
   getThread,
+  setRunningStatus,
   updateUsage,
 } from "../../db/threads";
 import OpenAI from "openai";
 import { toolsRegistry } from "../tools";
+import { ChatCompletionRunner } from "openai/lib/ChatCompletionRunner.mjs";
 
 const openai = new OpenAI();
 
 async function validateEntities(threadId: number, assistantId: number) {
-  const thread = await getThread(threadId);
-  if (!thread) {
+  const threads = await getThread(threadId);
+  if (!threads) {
     throw new Error("Thread not found");
   }
 
@@ -27,7 +29,7 @@ async function validateEntities(threadId: number, assistantId: number) {
     throw new Error("Assistant is disabled");
   }
 
-  return { thread, assistant };
+  return { thread: threads[0], assistant };
 }
 
 function processMessages(
@@ -58,7 +60,7 @@ function processMessages(
   ] as OpenAI.ChatCompletionMessageParam[];
 }
 
-async function runToolsAndHandleResponses(
+function runToolsAndHandleResponses(
   threadId: number,
   messages: OpenAI.ChatCompletionMessageParam[],
   model: string
@@ -111,6 +113,29 @@ async function runToolsAndHandleResponses(
   return { runner, messagesToCreate };
 }
 
+const threadsQueueController: {
+  threads: {
+    threadId: number;
+    threadRunner: ChatCompletionRunner;
+  }[];
+  getThread(
+    threadId: number
+  ): { threadId: number; threadRunner: ChatCompletionRunner } | undefined;
+  addThread(threadId: number, threadRunner: ChatCompletionRunner): void;
+  removeThread(threadId: number): void;
+} = {
+  threads: [],
+  getThread(threadId: number) {
+    return this.threads.find((t) => t.threadId === threadId);
+  },
+  addThread(threadId: number, threadRunner: ChatCompletionRunner) {
+    this.threads.push({ threadId, threadRunner });
+  },
+  removeThread(threadId: number) {
+    this.threads = this.threads.filter((t) => t.threadId !== threadId);
+  },
+};
+
 export async function runThread(
   {
     threadId,
@@ -122,22 +147,35 @@ export async function runThread(
   automode?: boolean
 ) {
   const { thread, assistant } = await validateEntities(threadId, assistantId);
+
+  const existingThread = threadsQueueController.getThread(threadId);
+
+  if (existingThread) {
+    await existingThread.threadRunner.finalContent();
+  }
+
   const messages = await getMessages({ threadId });
   const processedMessages = processMessages(messages, assistant);
 
-  const { runner, messagesToCreate } = await runToolsAndHandleResponses(
+  const { runner, messagesToCreate } = runToolsAndHandleResponses(
     threadId,
     processedMessages,
     assistant.model ?? "gpt-4o"
   );
 
   try {
+    await setRunningStatus(thread.name, 1);
+    threadsQueueController.addThread(threadId, runner);
     const result = await runner.finalContent();
     for (const message of messagesToCreate) {
       await createMessage(message);
     }
+    threadsQueueController.removeThread(threadId);
+    setRunningStatus(thread.name, 0);
     return result;
   } catch (error) {
+    threadsQueueController.removeThread(threadId);
+    setRunningStatus(thread.name, 0);
     if (automode) {
       await deleteMessage(messages[messages.length - 1].id);
     }

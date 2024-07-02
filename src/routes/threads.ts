@@ -11,6 +11,7 @@ import {
   disableThread,
   getAllThreads,
   getMessages,
+  getRunningStatus,
   getThreadByName,
 } from "../db/threads";
 import { threadsRunnerRoutes } from "./threads-runner";
@@ -29,7 +30,11 @@ threadsRoute
           set.status = 404;
           return { message: "Thread not found" };
         }
-        return res[0];
+        const running = await getRunningStatus(res[0].name);
+        return {
+          ...res[0],
+          running: !!Number(running),
+        };
       }
       return await getAllThreads();
     },
