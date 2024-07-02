@@ -19,6 +19,7 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@elysiajs/swagger": "^1.0.5",
     "drizzle-orm": "^0.31.2",
     "drizzle-typebox": "^0.1.1",
     "elysia": "^1.0.25",

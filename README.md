@@ -61,11 +61,12 @@ curl --request POST \
   --header 'Content-Type: application/json' \
   --data '{
   "threadId": 1,
-  "assistantId": 3,
+  "assistantName": "makima",
   "message": {
     "content": "whats the time right now and what was my previous question"
   }
 }'
+# threadId can also be threadName, u can define threadName during the creation of a thread.
 ```
 
 simple text response:

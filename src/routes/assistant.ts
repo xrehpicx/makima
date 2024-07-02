@@ -29,9 +29,10 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
         name: t.Optional(t.String()),
       }),
       detail: {
-        description: "Get the status of a assistant",
-        summary: `examples:
-            curl -X GET http://localhost:6666/assistant?name=bob
+        summary: "Get Assistants",
+        description: `Get the status of a assistant
+        examples:
+            curl -X GET http://localhost:7777/assistant?name=bob
             `,
       },
     }
@@ -45,10 +46,10 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     {
       body: t.Omit(createAssistantSchema, ["id"]),
       detail: {
-        description:
-          "Creates a new assistant, the assistant will be enabled by default",
-        summary: `examples:
-      curl -X POST http://localhost:6666/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
+        summary: "Create Assistant",
+        description: `Creates a new assistant, the assistant will be enabled by default
+        examples:
+      curl -X POST http://localhost:7777/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
       `,
       },
     }
@@ -62,9 +63,10 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     {
       body: t.Omit(updateAssistantSchema, ["id"]),
       detail: {
-        description: "Update an assistant",
-        summary: `examples:
-      curl -X PATCH http://localhost:6666/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
+        summary: "Update Assistant",
+        description: `Update an assistant
+        examples:
+      curl -X PATCH http://localhost:7777/assistant -d '{"name":"bob","prompt":"reply with hey im working"}' -H 'Content-Type: application/json'
       `,
       },
     }
@@ -85,11 +87,12 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
         permanent: t.Boolean({ default: false }),
       }),
       detail: {
-        description: "Disable an assistant",
-        summary: `examples:
-      curl -X DELETE http://localhost:6666/assistant -d '{"name":"bob"}' -H 'Content-Type: application/json'
+        summary: "Delete Assistant",
+        description: `Disable an assistant
+        examples:
+      curl -X DELETE http://localhost:7777/assistant -d '{"name":"bob"}' -H 'Content-Type: application/json'
 
-      curl -X DELETE http://localhost:6666/assistant -d '{"name":"bob","permanent":true}' -H 'Content-Type: application/json'
+      curl -X DELETE http://localhost:7777/assistant -d '{"name":"bob","permanent":true}' -H 'Content-Type: application/json'
       `,
       },
     }

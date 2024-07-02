@@ -38,9 +38,10 @@ threadsRoute
         name: t.Optional(t.String()),
       }),
       detail: {
-        description: "Get the status of a thread",
-        summary: `examples:
-            curl -X GET http://localhost:6666/thread?name=bobandme
+        summary: "Get thread status",
+        description: `Get the status of a thread
+        examples:
+            curl -X GET http://localhost:7777/thread?name=bobandme
             `,
       },
     }
@@ -54,9 +55,10 @@ threadsRoute
     {
       body: t.Omit(createThreadSchema, ["id"]),
       detail: {
-        description: "Creates a new thread",
-        summary: `examples:
-        curl -X POST http://localhost:6666/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
+        summary: "Create Thread",
+        description: `Creates a new thread
+        examples:
+        curl -X POST http://localhost:7777/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
         `,
       },
     }
@@ -77,11 +79,12 @@ threadsRoute
         force: t.Optional(t.Boolean()),
       }),
       detail: {
-        description: "Delete a thread",
-        summary: `examples:
-            curl -X DELETE http://localhost:6666/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
+        summary: "Delete Thread",
+        description: `Delete a thread
+        examples:
+            curl -X DELETE http://localhost:7777/thread -d '{"name":"bobandme"}' -H 'Content-Type: application/json'
 
-            curl -X DELETE http://localhost:6666/thread -d '{"name":"bobandme", "force": true}' -H 'Content-Type: application/json'
+            curl -X DELETE http://localhost:7777/thread -d '{"name":"bobandme", "force": true}' -H 'Content-Type: application/json'
             `,
       },
     }
@@ -115,9 +118,10 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
         thread_id: t.Numeric(),
       }),
       detail: {
-        description: "Get the all messages of a thread",
-        summary: `examples:
-            curl -X GET http://localhost:6666/message
+        summary: "Get Messages",
+        description: `Get the all messages of a thread
+        examples:
+            curl -X GET http://localhost:7777/message
             `,
       },
     }
@@ -135,9 +139,10 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
     {
       body: t.Omit(createMessageSchema, ["id", "tool_call_id", "tool_calls"]),
       detail: {
-        description: "Creates a new message",
-        summary: `examples:
-            curl -X POST http://localhost:6666/message -d '{"thread_id":1, "content":"hello"}' -H 'Content-Type: application/json'
+        summary: "Create Message",
+        description: `Creates a new message
+        examples:
+            curl -X POST http://localhost:7777/message -d '{"thread_id":1, "content":"hello"}' -H 'Content-Type: application/json'
             `,
       },
     }
@@ -160,9 +165,10 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
         thread_id: t.Optional(t.Numeric()),
       }),
       detail: {
-        description: "Delete a message",
-        summary: `examples:
-            curl -X DELETE http://localhost:6666/message -d '{"message_id":1}' -H 'Content-Type: application/json'
+        summary: "Delete Message",
+        description: `Delete a message
+        examples:
+            curl -X DELETE http://localhost:7777/message -d '{"message_id":1}' -H 'Content-Type: application/json'
             `,
       },
     }

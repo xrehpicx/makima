@@ -6,6 +6,7 @@ const envSchema = z.object({
     .refine((key) => key.startsWith("sk-"), "Invalid key format"),
   DATABASE_URL: z.string(),
   REDIS_URL: z.string(),
+  PORT: z.number().default(7777),
 });
 
 type Env = z.infer<typeof envSchema>;
