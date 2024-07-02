@@ -109,13 +109,3 @@ src
     └── threads.ts
 └── tsconfig.json
 ```
-
-## TODO
-
-- [ ] Write some docs
-- [ ] Implement Documents and file system
-- [ ] Implement API keys system
-- [ ] Client-side tools system
-- [ ] Implement context param for tools
-- [ ] Web socket support for listening to threads
-- [ ] Support all hosting methods
