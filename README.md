@@ -1,125 +1,98 @@
 # Makima
 
-Simpler alternative to openai assistants api
+A Simpler Assistants API
 
-### Why
+## Why
 
-Openai assistants api is awesome but very specific to their service and alternatives try to copy their compatibility along with the limitation (limited supported tools) and complexity (their node sdk for assistants is a mess as of July 2024) of the api.
+OpenAI Assistants API is amazing but very specific to their service. Alternatives often try to copy their sdk compatibility along with the limitations (limited supported tools) and complexity (their Node SDK for assistants is a mess as of July 2024 at least).
 
-Example Case:
+Makima aims to simplify casual use cases, making it trivial for remote scripts and prototype programs to implement AI features in a simple way.
 
-We have a assistant declared:
+### Example Case
 
-```json
-[
-  {
-    "id": 3,
-    "name": "makima",
-    "prompt": "You translate everything to simple japanese while also explaning the translation after u translate",
-    "model": "gpt-3.5-turbo"
-  }
-]
-```
-
-We have a thread (id=1) with messages:
+We have an assistant declared:
 
 ```json
 [
   {
     "id": 1,
-    "threadId": 1,
-    "createdAt": "2024-07-01T13:54:49.950Z",
-    "role": "user",
-    "content": "hey this is a test message",
-    "tool_call_id": null,
-    "tool_calls": null,
-    "name": null
-  },
-  {
-    "id": 2,
-    "threadId": 1,
-    "createdAt": "2024-07-01T13:55:21.953Z",
-    "role": "user",
-    "content": "hey this is another test message",
-    "tool_call_id": null,
-    "tool_calls": null,
-    "name": null
-  },
-  {
-    "id": 3,
-    "threadId": 1,
-    "createdAt": "2024-07-01T16:01:16.042Z",
-    "role": "user",
-    "content": "who is the pm of india",
-    "tool_call_id": null,
-    "tool_calls": null,
-    "name": null
+    "name": "makima",
+    "prompt": "You take in errors that occur in a script and then you need to notify the user exactly the important part, or if it's verbose explain the error in the notification.",
+    "model": "gpt-3.5-turbo"
   }
+]
 ```
 
-To use the assistant to add to this thread it would require multiple calls using assistants api, the point here is to simply casual use-cases making it trivial for remote scripts and prototype programs to implement ai features in a simple way, with makima this becomes a single api call:
+We have a thread called "server_logs" to use the assistant to add to this thread, it would require multiple calls using the assistants API. Makima simplifies this process to a single API call:
 
-```bash
+````bash
 curl --request POST \
   --url http://localhost:7777/thread/auto \
   --header 'Content-Type: application/json' \
   --data '{
-  "threadId": 1,
+  "threadName": "server_logs",
   "assistantName": "makima",
   "message": {
-    "content": "whats the time right now and what was my previous question"
+    "content": "\n\n```\nJul 2 09:58:27 server kernel: [123456.789012] usb 1-1: new high-speed USB device number 7 using xhci_hcd\nJul 2 09:58:27 server kernel: [123456.789456] usb 1-1: New USB device found, idVendor=0781, idProduct=5567\nJul 2 09:58:27 server kernel: [123456.789789] usb 1-1: New USB device strings: Mfr=1, Product=2, SerialNumber=3\nJul 2 09:58:27 server kernel: [123456.789999] usb 1-1: Product: Cruzer Blade\nJul 2 09:58:27 server kernel: [123456.790123] usb 1-1: Manufacturer: SanDisk\nJul 2 09:58:27 server kernel: [123456.790456] usb 1-1: SerialNumber: 1234567890ABCDE\nJul 2 09:58:27 server kernel: [123456.791234] usb 1-1: can'\''t set config #1, error -32\n```\n"
   }
 }'
-# threadId can also be threadName, u can define threadName during the creation of a thread.
+
+````
+
+Tool runs for notifying and updates the thread:
+
+```json
+{
+  "id": 2,
+  "threadId": 3,
+  "role": "assistant",
+  "createdAt": "2024-07-02T10:00:00.000Z",
+  "content": null,
+  "name": null,
+  "tool_call": {
+    "tool_name": "notify_discord",
+    "parameters": {
+      "message": "The error in the log is:\n\n`usb 1-1: can't set config #1, error -32`\n\nExplanation: The system tried to set the configuration for the USB device but encountered an error (`error -32`). This could be due to a hardware issue with the USB device or a compatibility problem with the USB controller. It might be worth trying a different USB port or device to see if the problem persists."
+    }
+  }
+}
 ```
 
-simple text response:
+## Development setup
 
-```
-The current date and time is July 1, 2024, 10:38:39 PM. Your previous question was "who is the pm of india".
-```
-
-## CONTRIBUTION DOC (for now):
-
-This project requires:
+### Requirements
 
 - Bun
-- PGVector
-- Redis
+- Docker
 
-### Services setup
+### Services Setup
 
-```
-mv smaple.env .env.local # add ur own openai key
+```bash
+mv sample.env .env.local # Add your own OpenAI key
 docker compose -f ./docker/local-docker-compose.yml up -d
 ```
 
-### Start server
+### Start Server
 
 ```bash
 bun install
-```
-
-To run:
-
-```bash
 bun run dev
 ```
 
-**Check the swagger at `/swagger`**
+**Check the Swagger at `/swagger`**
 
-General fs:
+### File Structure
 
 ```
 makima
 ├── drizzle.config.ts
 src
-├── db # Everything db related
+├── db
 │   ├── assistants.ts
 │   ├── connection.ts
 │   ├── migrate.ts
 │   ├── redis.ts
-│   ├── schema.ts # this is the schema file for drizzle, this should not contain any run time code.
+│   ├── schema.ts # Schema file for Drizzle; should not contain any runtime code.
 │   └── threads.ts
 ├── index.ts
 ├── lib
@@ -127,8 +100,8 @@ src
 │   ├── runners
 │   │   └── thread.ts
 │   └── tools
-│       ├── functions # all tools files in this will be auto imported and registered
-│       │   └── time.ts # all exports that have type = function will be registered as tools see this example
+│       ├── functions # All tool files here will be auto-imported and registered
+│       │   └── time.ts # All exports with type=function will be registered as tools
 │       └── index.ts
 └── routes
     ├── assistant.ts
@@ -137,12 +110,12 @@ src
 └── tsconfig.json
 ```
 
-## TODO:
+## TODO
 
-[ ] Write some docs
-[ ] Implement Documents and file system
-[ ] Implement api keys system
-[ ] Client side tools system
-[ ] Implement context param for tools
-[ ] Web socket supports for listening to threads
-[ ] Support all hosting methods
+- [ ] Write some docs
+- [ ] Implement Documents and file system
+- [ ] Implement API keys system
+- [ ] Client-side tools system
+- [ ] Implement context param for tools
+- [ ] Web socket support for listening to threads
+- [ ] Support all hosting methods
