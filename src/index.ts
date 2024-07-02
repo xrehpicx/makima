@@ -91,7 +91,6 @@ adminAuth.use(keyRoutes);
 
 const authenticated = new Elysia();
 authenticated.use(bearer()).onBeforeHandle(({ bearer, set }) => {
-  console.log("onBeforeHandle bearer: ", bearer);
   if (!bearer) {
     set.status = 400;
     set.headers[
