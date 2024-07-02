@@ -7,6 +7,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   REDIS_URL: z.string(),
   PORT: z.number().default(7777),
+  JWT_SECRET: z.string(),
+  ADMIN_KEY: z.string(),
 });
 
 type Env = z.infer<typeof envSchema>;

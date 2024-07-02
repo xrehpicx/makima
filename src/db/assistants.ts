@@ -4,9 +4,12 @@ import { assistant } from "./schema";
 import { createInsertSchema } from "drizzle-typebox";
 import { Static, t } from "elysia";
 
-export const createAssistantSchema = createInsertSchema(assistant);
+export const createAssistantSchema = createInsertSchema(assistant, {
+  name: t.String({ minLength: 3, maxLength: 10 }),
+  prompt: t.String({ minLength: 10 }),
+});
 export const updateAssistantSchema = t.Object({
-  name: t.String(),
+  name: t.String({ minLength: 3, maxLength: 10 }),
   prompt: t.Optional(t.String()),
   model: t.Optional(t.String()),
   enabled: t.Optional(t.Boolean()),

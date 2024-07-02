@@ -20,10 +20,15 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@elysiajs/bearer": "^1.0.2",
+    "@elysiajs/jwt": "^1.0.2",
     "@elysiajs/swagger": "^1.0.5",
+    "@types/jsonwebtoken": "^9.0.6",
     "drizzle-orm": "^0.31.2",
     "drizzle-typebox": "^0.1.1",
     "elysia": "^1.0.25",
+    "elysia-basic-auth": "^1.0.7",
+    "jsonwebtoken": "^9.0.2",
     "logestic": "^1.2.0",
     "openai": "^4.52.2",
     "pg": "^8.12.0",
