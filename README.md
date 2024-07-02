@@ -3,23 +3,26 @@
 Simpler alternative to openai assistants api
 
 ### Why
+
 Openai assistants api is awesome but very specific to their service and alternatives try to copy their compatibility along with the limitation (limited supported tools) and complexity (their node sdk for assistants is a mess as of July 2024) of the api.
 
 Example Case:
 
 We have a assistant declared:
+
 ```json
 [
   {
     "id": 3,
     "name": "makima",
     "prompt": "You translate everything to simple japanese while also explaning the translation after u translate",
-    "model": "gpt-3.5-turbo",
+    "model": "gpt-3.5-turbo"
   }
 ]
 ```
 
 We have a thread (id=1) with messages:
+
 ```json
 [
   {
@@ -55,9 +58,10 @@ We have a thread (id=1) with messages:
 ```
 
 To use the assistant to add to this thread it would require multiple calls using assistants api, the point here is to simply casual use-cases making it trivial for remote scripts and prototype programs to implement ai features in a simple way, with makima this becomes a single api call:
+
 ```bash
 curl --request POST \
-  --url http://localhost:6666/thread/auto \
+  --url http://localhost:7777/thread/auto \
   --header 'Content-Type: application/json' \
   --data '{
   "threadId": 1,
@@ -70,19 +74,10 @@ curl --request POST \
 ```
 
 simple text response:
+
 ```
 The current date and time is July 1, 2024, 10:38:39 PM. Your previous question was "who is the pm of india".
 ```
-
-## TODO:
-
-[ ] Write some docs
-[ ] Implement Documents and file system
-[ ] Implement api keys system
-[ ] Client side tools system
-[ ] Implement context param for tools
-[ ] Web socket supports for listening to threads
-[ ] Support all hosting methods
 
 ## CONTRIBUTION DOC (for now):
 
@@ -110,6 +105,8 @@ To run:
 ```bash
 bun run dev
 ```
+
+**Check the swagger at `/swagger`**
 
 General fs:
 
@@ -139,3 +136,13 @@ src
     └── threads.ts
 └── tsconfig.json
 ```
+
+## TODO:
+
+[ ] Write some docs
+[ ] Implement Documents and file system
+[ ] Implement api keys system
+[ ] Client side tools system
+[ ] Implement context param for tools
+[ ] Web socket supports for listening to threads
+[ ] Support all hosting methods
