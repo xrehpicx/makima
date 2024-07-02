@@ -60,12 +60,13 @@ function processMessages(
 
 async function runToolsAndHandleResponses(
   threadId: number,
-  messages: OpenAI.ChatCompletionMessageParam[]
+  messages: OpenAI.ChatCompletionMessageParam[],
+  model: string
 ) {
   const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
   const runner = openai.beta.chat.completions
     .runTools({
-      model: "gpt-4o",
+      model,
       messages,
       tools: toolsRegistry,
     })
@@ -126,7 +127,8 @@ export async function runThread(
 
   const { runner, messagesToCreate } = await runToolsAndHandleResponses(
     threadId,
-    processedMessages
+    processedMessages,
+    assistant.model ?? "gpt-4o"
   );
 
   try {
