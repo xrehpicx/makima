@@ -17,11 +17,19 @@ const main = new Elysia().get("/", () => "makima running", {
 main.use(
   swagger({
     autoDarkMode: true,
+    scalarConfig: {
+      customCss: `body {background:var(--scalar-background-2);}`,
+    },
     documentation: {
       info: {
         title: "Makima",
         version: `v${packagejson.version}`,
+        contact: {
+          name: "Raj Sharma",
+          email: "r@raj.how",
+        },
       },
+
       tags: [
         {
           name: "Utilites",
