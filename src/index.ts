@@ -7,7 +7,6 @@ import packagejson from "../package.json";
 import { keyRoutes } from "./routes/keys";
 import bearer from "@elysiajs/bearer";
 import { verifyToken } from "./lib/keys/key-manager";
-import { basicAuth } from "elysia-basic-auth";
 
 const main = new Elysia().get("/", () => "makima running", {
   detail: {

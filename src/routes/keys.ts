@@ -1,7 +1,5 @@
 import Elysia, { t } from "elysia";
 import { generateToken, verifyToken } from "../lib/keys/key-manager";
-import { basicAuth } from "elysia-basic-auth";
-import { ENV } from "../lib/env_validation";
 
 export const keyRoutes = new Elysia({ prefix: "/key" });
 
