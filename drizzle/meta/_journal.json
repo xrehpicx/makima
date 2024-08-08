@@ -15,6 +15,20 @@
       "when": 1719905275341,
       "tag": "0001_deep_callisto",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1723133133482,
+      "tag": "0002_clever_rachel_grey",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1723133233043,
+      "tag": "0003_yummy_invaders",
+      "breakpoints": true
     }
   ]
 }

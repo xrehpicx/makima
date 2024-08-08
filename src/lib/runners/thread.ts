@@ -9,7 +9,6 @@ import {
 } from "../../db/threads";
 import OpenAI from "openai";
 import { toolsRegistry } from "../tools";
-import { ChatCompletionRunner } from "openai/lib/ChatCompletionRunner.mjs";
 
 const openai = new OpenAI();
 

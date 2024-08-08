@@ -1,4 +1,3 @@
-import { name } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -24,6 +23,16 @@ export const assistant = pgTable("assistant", {
   prompt: text("prompt").notNull(),
   model: text("model").default("gpt-4o"),
   enabled: boolean("enabled").default(true),
+});
+
+export const tools = pgTable("tools", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  description: text("description").notNull(),
+  type: text("type").notNull(),
+  parameters: json("parameters").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const threads = pgTable("threads", {

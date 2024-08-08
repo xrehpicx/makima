@@ -21,7 +21,7 @@ export async function registerAllTools() {
   }
 
   console.log(
-    "registered tools",
+    "registered local tools",
     toolsRegistry.map((t) => t.function.name)
   );
 }

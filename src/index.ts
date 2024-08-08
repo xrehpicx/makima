@@ -7,6 +7,7 @@ import packagejson from "../package.json";
 import { keyRoutes } from "./routes/keys";
 import bearer from "@elysiajs/bearer";
 import { verifyToken } from "./lib/keys/key-manager";
+import { toolRoute } from "./routes/tool";
 
 const main = new Elysia().get("/", () => "makima running", {
   detail: {
@@ -108,7 +109,7 @@ authenticated.use(bearer()).onBeforeHandle(({ bearer, set }) => {
 authenticated.use(assistantRoute);
 authenticated.use(threadsRoute);
 authenticated.use(messagesRoutes);
-
+main.use(toolRoute)
 main.use(adminAuth);
 main.use(authenticated);
 
