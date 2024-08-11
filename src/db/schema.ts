@@ -35,6 +35,15 @@ export const tools = pgTable("tools", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const assistantTools = pgTable("assistant_tools", {
+  assistantId: integer("assistant_id")
+    .references(() => assistant.id)
+    .notNull(),
+  toolId: integer("tool_id")
+    .references(() => tools.id)
+    .notNull(),
+});
+
 export const threads = pgTable("threads", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().unique(),

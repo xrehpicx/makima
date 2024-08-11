@@ -16,11 +16,12 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
     async ({ query: { name }, set }) => {
       if (name) {
         const res = await getAssistantByName(name);
-        if (res.length === 0) {
+        console.log(res);
+        if (!res) {
           set.status = 404;
-          return { message: "assistant not found" };
+          return { message: "Assistant not found" };
         }
-        return res[0];
+        return res;
       }
       return await getAllAssistants();
     },
@@ -30,7 +31,7 @@ export const assistantRoute = new Elysia({ prefix: "/assistant" })
       }),
       detail: {
         summary: "Get Assistants",
-        description: `Get the details of an assistant by name. If the 'name' query parameter is provided, it will return the assistant with the matching name. If no 'name' query parameter is provided, it will return all assistants.`,
+        description: `Get the details of an assistant by name, including the tools associated with the assistant. If the 'name' query parameter is provided, it will return the assistant with the matching name. If no 'name' query parameter is provided, it will return all assistants.`,
         tags: ["Assistant"],
       },
     }

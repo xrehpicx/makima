@@ -74,7 +74,7 @@ main.use(
         },
       ],
     },
-  })
+  }),
 );
 
 const adminAuth = new Elysia().use(bearer()).onBeforeHandle(({ bearer }) => {
@@ -93,12 +93,16 @@ const authenticated = new Elysia();
 authenticated.use(bearer()).onBeforeHandle(({ bearer, set }) => {
   if (!bearer) {
     set.status = 400;
-    set.headers[
-      "WWW-Authenticate"
-    ] = `Bearer realm='sign', error="invalid_request"`;
+    set.headers["WWW-Authenticate"] =
+      `Bearer realm='sign', error="invalid_request"`;
 
     return "Unauthorized";
   }
+
+  if (bearer === ENV.ADMIN_KEY) {
+    return;
+  }
+
   try {
     verifyToken(bearer);
   } catch (error) {
@@ -106,10 +110,11 @@ authenticated.use(bearer()).onBeforeHandle(({ bearer, set }) => {
     return "Unauthorized";
   }
 });
+
 authenticated.use(assistantRoute);
 authenticated.use(threadsRoute);
 authenticated.use(messagesRoutes);
-main.use(toolRoute)
+main.use(toolRoute);
 main.use(adminAuth);
 main.use(authenticated);
 
