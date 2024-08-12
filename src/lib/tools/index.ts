@@ -4,29 +4,30 @@ import { ZodSchema } from "zod";
 import fs from "fs";
 import zodToJsonSchema from "zod-to-json-schema";
 
-export const toolsRegistry: RunnableToolFunctionWithParse<any>[] = [];
-
-export async function registerAllTools() {
-  console.log("registering tools");
+export async function getTools(context: any) {
+  const toolsRegistry: RunnableToolFunctionWithParse<any>[] = [];
   const files = fs.readdirSync(__dirname + "/functions");
-
 
   for (const file of files) {
     const module = await import(`./functions/${file}`);
     for (const key in module) {
       if (module[key]?.type === "function") {
-        toolsRegistry.push(module[key]);
+        const mod = module[key];
+        mod.function.function = (args: any) => {
+          return mod.function.function(args, context);
+        };
+        toolsRegistry.push();
       }
     }
   }
 
   console.log(
     "registered local tools",
-    toolsRegistry.map((t) => t.function.name)
+    toolsRegistry.map((t) => t.function.name),
   );
-}
 
-await registerAllTools();
+  return toolsRegistry;
+}
 
 export function zodFunction<T extends object>({
   function: fn,
@@ -34,7 +35,7 @@ export function zodFunction<T extends object>({
   description = "",
   name,
 }: {
-  function: (args: T) => Promise<object>;
+  function: (args: T, props: any) => Promise<object | string>;
   schema: ZodSchema<T>;
   description?: string;
   name?: string;

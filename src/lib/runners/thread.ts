@@ -9,7 +9,7 @@ import {
 } from "../../db/threads";
 import OpenAI from "openai";
 import { createOpenAIRunnableTool } from "../tools/actions";
-import { toolsRegistry } from "../tools";
+import { getTools } from "../tools";
 
 const openai = new OpenAI();
 
@@ -59,7 +59,7 @@ function processMessages(
   ] as OpenAI.ChatCompletionMessageParam[];
 }
 
-function runToolsAndHandleResponses(
+async function runToolsAndHandleResponses(
   threadId: number,
   messages: OpenAI.ChatCompletionMessageParam[],
   model: string,
@@ -70,11 +70,12 @@ function runToolsAndHandleResponses(
     .map(createOpenAIRunnableTool); // Convert the assistant's tools to runnable tools
 
   const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
+  const localTools = await getTools({});
   const runner = openai.beta.chat.completions
     .runTools({
       model,
       messages,
-      tools: [...runnableTools, ...toolsRegistry],
+      tools: [...runnableTools, ...localTools],
     })
     .on("chatCompletion", async (completion) => {
       const message = completion.choices[0].message;
@@ -150,7 +151,7 @@ export async function runThread(
     const { thread, assistant } = await validateEntities(threadId, assistantId);
     const messages = await getMessages({ threadIdentifier: threadId });
     const processedMessages = processMessages(messages, assistant);
-    const { runner, messagesToCreate } = runToolsAndHandleResponses(
+    const { runner, messagesToCreate } = await runToolsAndHandleResponses(
       threadId,
       processedMessages,
       assistant.model ?? "gpt-4o",

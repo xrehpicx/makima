@@ -60,6 +60,18 @@ export const threads = pgTable("threads", {
   usage: json("usage"),
 });
 
+export const memories = pgTable("memories", {
+  id: serial("id").primaryKey(),
+  threadId: integer("thread_id")
+    .references(() => threads.id)
+    .notNull(),
+  assistantId: integer("assistant_id")
+    .references(() => assistant.id)
+    .notNull(),
+  memory: json("memory").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const messages = pgTable("messages", {
   id: serial("id").primaryKey(),
   threadId: integer("thread_id")

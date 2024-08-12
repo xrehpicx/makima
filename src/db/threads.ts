@@ -1,6 +1,6 @@
 import { createInsertSchema } from "drizzle-typebox";
 import { db } from "./connection";
-import { threads, messages } from "./schema";
+import { threads, messages, memories } from "./schema";
 import { sql } from "drizzle-orm";
 import { redisClient } from "./redis";
 import { t } from "elysia";
@@ -33,19 +33,22 @@ export function updateUsage(
   return db.update(threads).set({ usage }).where(query).execute();
 }
 
-export function getThread(threadId: number) {
-  return db
-    .select()
-    .from(threads)
-    .where(sql`${threads.id} = ${threadId} AND ${threads.disabled} = false`)
-    .execute();
-}
+export function getThread(identifier: number | string) {
+  let whereCondition;
 
-export function getThreadByName(name: string) {
+  if (typeof identifier === "number") {
+    whereCondition = sql`${threads.id} = ${identifier} AND ${threads.disabled} = false`;
+  } else if (typeof identifier === "string") {
+    whereCondition = sql`${threads.name} = ${identifier} AND ${threads.disabled} = false`;
+  } else {
+    throw new Error("Invalid identifier type");
+  }
+
   return db
     .select()
     .from(threads)
-    .where(sql`${threads.name} = ${name} AND ${threads.disabled} = false`)
+    .where(whereCondition)
+    .groupBy(threads.id)
     .execute();
 }
 
@@ -91,6 +94,13 @@ export function disableThread(name: string) {
   return db
     .update(threads)
     .set({ disabled: true })
+    .where(sql`${threads.name} = ${name}`);
+}
+
+export function enableThread(name: string) {
+  return db
+    .update(threads)
+    .set({ disabled: false })
     .where(sql`${threads.name} = ${name}`);
 }
 

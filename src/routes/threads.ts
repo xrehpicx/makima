@@ -9,10 +9,11 @@ import {
   deleteMessages,
   deleteThread,
   disableThread,
+  enableThread,
   getAllThreads,
   getMessages,
   getRunningStatus,
-  getThreadByName,
+  getThread,
 } from "../db/threads";
 import { threadsRunnerRoutes } from "./threads-runner";
 
@@ -25,7 +26,7 @@ threadsRoute
     "/",
     async ({ query: { name }, set }) => {
       if (name) {
-        const res = await getThreadByName(name);
+        const res = await getThread(name);
         if (res.length === 0) {
           set.status = 404;
           return { message: "Thread not found" };
@@ -66,6 +67,23 @@ threadsRoute
       },
     },
   )
+  .patch(
+    "/",
+    async ({ body }) => {
+      await enableThread(body.name);
+      return { message: "Thread enabled" };
+    },
+    {
+      body: t.Object({
+        name: t.String(),
+      }),
+      detail: {
+        summary: "Enable Thread",
+        description: "Enable a thread by name.",
+        tags: ["Threads"],
+      },
+    },
+  )
   .delete(
     "/",
     async ({ body: { name, force } }) => {
@@ -94,12 +112,11 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
   .get(
     "/",
     async ({ query: { thread_id, thread_name }, set }) => {
-    
       if (!thread_id && !thread_name) {
         set.status = 400;
         return { message: "Either thread_id or thread_name is required" };
       }
-    
+
       const identifier: string | number = thread_id || thread_name || ""; // to satisfy the type checker
 
       const exists = await checkThread(identifier);
