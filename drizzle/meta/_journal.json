@@ -29,6 +29,27 @@
       "when": 1723133233043,
       "tag": "0003_yummy_invaders",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1723448016554,
+      "tag": "0004_fast_omega_flight",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1723450395859,
+      "tag": "0005_fuzzy_major_mapleleaf",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1723453681192,
+      "tag": "0006_fancy_layla_miller",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import {
   vector,
   boolean,
   json,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const apiKeys = pgTable("api_keys", {
@@ -31,17 +32,24 @@ export const tools = pgTable("tools", {
   description: text("description").notNull(),
   type: text("type").notNull(),
   parameters: json("parameters").notNull(),
+  endpoint: text("endpoint").notNull(),
+  method: text("method").notNull().default("POST"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 export const assistantTools = pgTable("assistant_tools", {
+  id: serial("id").primaryKey(),
   assistantId: integer("assistant_id")
     .references(() => assistant.id)
     .notNull(),
   toolId: integer("tool_id")
     .references(() => tools.id)
     .notNull(),
+}, (table) => {
+  return {
+    uniqueAssistantTool: uniqueIndex('unique_assistant_tool').on(table.assistantId, table.toolId)
+  };
 });
 
 export const threads = pgTable("threads", {

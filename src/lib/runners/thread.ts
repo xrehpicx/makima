@@ -8,6 +8,7 @@ import {
   updateUsage,
 } from "../../db/threads";
 import OpenAI from "openai";
+import { createOpenAIRunnableTool } from "../tools/actions";
 import { toolsRegistry } from "../tools";
 
 const openai = new OpenAI();
@@ -18,12 +19,11 @@ async function validateEntities(threadId: number, assistantId: number) {
     throw new Error("Thread not found");
   }
 
-  const assistantRes = await getAssistant(assistantId);
-  if (!assistantRes || assistantRes.length <= 0) {
+  const assistant = await getAssistant(assistantId);
+  if (!assistant) {
     throw new Error("Assistant not found");
   }
 
-  const assistant = assistantRes[0];
   if (!assistant.enabled) {
     throw new Error("Assistant is disabled");
   }
@@ -33,7 +33,7 @@ async function validateEntities(threadId: number, assistantId: number) {
 
 function processMessages(
   messages: Awaited<ReturnType<typeof getMessages>>,
-  assistant: Awaited<ReturnType<typeof getAssistant>>[0]
+  assistant: Awaited<ReturnType<typeof getAssistant>>,
 ) {
   const systemMessage = {
     role: "system",
@@ -50,7 +50,7 @@ function processMessages(
         threadId: undefined,
         id: undefined,
         createdAt: undefined,
-      } as unknown as OpenAI.ChatCompletionMessageParam)
+      }) as unknown as OpenAI.ChatCompletionMessageParam,
   );
 
   return [
@@ -62,14 +62,19 @@ function processMessages(
 function runToolsAndHandleResponses(
   threadId: number,
   messages: OpenAI.ChatCompletionMessageParam[],
-  model: string
+  model: string,
+  assistant: Awaited<ReturnType<typeof getAssistant>>,
 ) {
+  const runnableTools = assistant.tools
+    .filter((t) => t.name)
+    .map(createOpenAIRunnableTool); // Convert the assistant's tools to runnable tools
+
   const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
   const runner = openai.beta.chat.completions
     .runTools({
       model,
       messages,
-      tools: toolsRegistry,
+      tools: [...runnableTools, ...toolsRegistry],
     })
     .on("chatCompletion", async (completion) => {
       const message = completion.choices[0].message;
@@ -90,7 +95,7 @@ function runToolsAndHandleResponses(
         return;
       }
       const existingCall = messages.find(
-        (m) => m.role === "tool" && m.tool_call_id === message.tool_call_id
+        (m) => m.role === "tool" && m.tool_call_id === message.tool_call_id,
       );
       if (existingCall) {
         return;
@@ -137,18 +142,19 @@ export async function runThread(
     threadId: number;
     assistantId: number;
   },
-  automode?: boolean
+  automode?: boolean,
 ) {
   await threadsQueueController.waitForThread(threadId);
 
   const threadPromise = (async () => {
     const { thread, assistant } = await validateEntities(threadId, assistantId);
-    const messages = await getMessages({ threadId });
+    const messages = await getMessages({ threadIdentifier: threadId });
     const processedMessages = processMessages(messages, assistant);
     const { runner, messagesToCreate } = runToolsAndHandleResponses(
       threadId,
       processedMessages,
-      assistant.model ?? "gpt-4o"
+      assistant.model ?? "gpt-4o",
+      assistant,
     );
     try {
       await setRunningStatus(thread.name, 1);
@@ -167,7 +173,7 @@ export async function runThread(
       }
       console.error(error);
       throw new Error(
-        "Error running thread, thread state restored to before run"
+        "Error running thread, thread state restored to before run",
       );
     } finally {
       threadsQueueController.removeThread(threadId);

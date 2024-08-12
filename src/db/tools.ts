@@ -7,22 +7,39 @@ import { Static, t } from "elysia";
 // Custom validation for tool name
 const toolNameSchema = t.String({
   pattern: "^[a-z_]+$",
-  errorMessage: "Name must be lowercase, contain no spaces, and be separated by underscores.",
+  errorMessage:
+    "Name must be lowercase, contain no spaces, and be separated by underscores.",
 });
 
-// Define schemas for validation
+const jsonSchemaValidator = t.Object({
+  type: t.String(),
+  properties: t.Record(
+    t.String(),
+    t.Object({
+      type: t.String(),
+      description: t.Optional(t.String()),
+      default: t.Optional(t.Any()),
+    }),
+  ),
+  required: t.Optional(t.Array(t.String())),
+});
+
 export const createToolSchema = createInsertSchema(tools, {
   name: toolNameSchema,
   description: t.String({ minLength: 10 }),
   type: t.String({ minLength: 3, maxLength: 50 }),
-  parameters: t.Any(),
+  parameters: jsonSchemaValidator,
+  endpoint: t.String(),
+  method: t.String(),
 });
 
 export const updateToolSchema = t.Object({
   name: toolNameSchema,
   description: t.Optional(t.String({ minLength: 10 })),
   type: t.Optional(t.String({ minLength: 3, maxLength: 50 })),
-  parameters: t.Optional(t.Any()),
+  parameters: t.Optional(jsonSchemaValidator),
+  endpoint: t.Optional(t.String()),
+  method: t.Optional(t.String()),
 });
 
 // Function to create a new tool

@@ -48,7 +48,7 @@ threadsRoute
           "Get the status of a thread by name or retrieve all threads.",
         tags: ["Threads"],
       },
-    }
+    },
   )
   .post(
     "/",
@@ -64,7 +64,7 @@ threadsRoute
           "Create a new thread by specifying the name of the thread in the request body.",
         tags: ["Threads"],
       },
-    }
+    },
   )
   .delete(
     "/",
@@ -87,14 +87,22 @@ threadsRoute
           "Delete a thread by name. Optionally, force delete the thread and its messages.",
         tags: ["Threads"],
       },
-    }
+    },
   );
 
 export const messagesRoutes = new Elysia({ prefix: "/message" })
   .get(
     "/",
-    async ({ query: { thread_id }, set }) => {
-      const exists = await checkThread(thread_id);
+    async ({ query: { thread_id, thread_name }, set }) => {
+    
+      if (!thread_id && !thread_name) {
+        set.status = 400;
+        return { message: "Either thread_id or thread_name is required" };
+      }
+    
+      const identifier: string | number = thread_id || thread_name || ""; // to satisfy the type checker
+
+      const exists = await checkThread(identifier);
       console.log("Checking if thread exists with ID:", thread_id, exists);
 
       if (!exists) {
@@ -102,13 +110,7 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
         return { message: "Thread not found" };
       }
 
-      const messages = await getMessages({ threadId: thread_id });
-
-      console.log(
-        "Retrieving messages for thread with ID:",
-        thread_id,
-        messages
-      );
+      const messages = await getMessages({ threadIdentifier: identifier });
 
       if (messages.length === 0) {
         set.status = 404;
@@ -119,7 +121,8 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
     },
     {
       query: t.Object({
-        thread_id: t.Numeric(),
+        thread_id: t.Optional(t.Numeric()),
+        thread_name: t.Optional(t.String()),
       }),
       detail: {
         summary: "Get Messages",
@@ -127,7 +130,7 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
           "Get all messages of a thread by specifying the thread ID in the query parameters.",
         tags: ["Messages"],
       },
-    }
+    },
   )
   .post(
     "/",
@@ -147,7 +150,7 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
           "Create a new message by specifying the message details in the request body.",
         tags: ["Messages"],
       },
-    }
+    },
   )
   .delete(
     "/",
@@ -172,5 +175,5 @@ export const messagesRoutes = new Elysia({ prefix: "/message" })
           "Delete a message by specifying the message ID or delete all messages in a thread by specifying the thread ID.",
         tags: ["Messages"],
       },
-    }
+    },
   );

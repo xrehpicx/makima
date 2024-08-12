@@ -19,7 +19,7 @@ export function createThread(name: string) {
 // identifier can be thread name or the thread id
 export function updateUsage(
   identifier: string | number,
-  usage: OpenAI.Completions.CompletionUsage
+  usage: OpenAI.Completions.CompletionUsage,
 ) {
   let query;
   if (typeof identifier === "string") {
@@ -154,15 +154,20 @@ export function createMessage({
     .execute();
 }
 
-export function getMessages({
-  threadId,
+export async function getMessages({
+  threadIdentifier,
   limit,
   page,
 }: {
-  threadId: number;
+  threadIdentifier: number | string;
   limit?: number;
   page?: number;
 }) {
+  const threadId =
+    typeof threadIdentifier === "string"
+      ? await getThreadID(threadIdentifier)
+      : threadIdentifier;
+
   const que = db
     .select()
     .from(messages)
@@ -175,7 +180,7 @@ export function getMessages({
     }
   }
 
-  return que.execute();
+  return await que.execute();
 }
 
 export function deleteMessage(id: number) {

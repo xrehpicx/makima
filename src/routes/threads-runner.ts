@@ -25,14 +25,14 @@ threadsRunnerRoutes.post(
       description: `Run a thread with the specified threadId and assistantId.`,
       tags: ["Threads"],
     },
-  }
+  },
 );
 
 export const threadRunnerHelper = new Elysia({ prefix: "/auto" });
 
 const runnerData = t.Object({
   message: t.Partial(
-    t.Omit(createMessageSchema, ["threadId", "id", "createdAt"])
+    t.Omit(createMessageSchema, ["threadId", "id", "createdAt"]),
   ),
   threadId: t.Optional(t.Number()),
   assistantId: t.Optional(t.Number()),
@@ -74,17 +74,25 @@ threadRunnerHelper.post(
         throw new Error("Assistant name is required");
       }
 
+      console.log("Getting assistant ID for: ", body.assistantName);
       const assistantId = await getAssistantID(body.assistantName);
 
       if (!assistantId) {
+        console.log("Assistant not found");
         throw new Error("Assistant not found");
       }
 
       assistant_exists = true;
 
       assistant_id = assistantId;
+      console.log("Assistant ID: ", assistant_id);
     } else {
-      assistant_exists = await checkAssistant(assistant_id);
+      try {
+        assistant_exists = await checkAssistant(assistant_id);
+      } catch (e) {
+        console.log(e);
+        throw new Error("Assistant not found");
+      }
     }
 
     if (!thread_exists && !assistant_exists) {
@@ -112,7 +120,7 @@ threadRunnerHelper.post(
         threadId: thread_id,
         assistantId: assistant_id,
       },
-      true
+      true,
     );
   },
   {
@@ -122,7 +130,7 @@ threadRunnerHelper.post(
       description: `Automatically runs a thread with a message. If the threadId and assistantId are provided, it runs the thread with the specified IDs. If the threadId and assistantId are not provided, it looks up the thread and assistant using their names and runs the thread if found.`,
       tags: ["Auto threads"],
     },
-  }
+  },
 );
 
 threadsRunnerRoutes.use(threadRunnerHelper);
