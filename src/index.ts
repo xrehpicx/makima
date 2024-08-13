@@ -114,7 +114,8 @@ authenticated.use(bearer()).onBeforeHandle(({ bearer, set }) => {
 authenticated.use(assistantRoute);
 authenticated.use(threadsRoute);
 authenticated.use(messagesRoutes);
-main.use(toolRoute);
+authenticated.use(toolRoute);
+
 main.use(adminAuth);
 main.use(authenticated);
 

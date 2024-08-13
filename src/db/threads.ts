@@ -1,6 +1,6 @@
 import { createInsertSchema } from "drizzle-typebox";
 import { db } from "./connection";
-import { threads, messages, memories } from "./schema";
+import { threads, messages } from "./schema";
 import { sql } from "drizzle-orm";
 import { redisClient } from "./redis";
 import { t } from "elysia";
