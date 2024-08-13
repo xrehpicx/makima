@@ -64,6 +64,7 @@ async function runToolsAndHandleResponses(
   messages: OpenAI.ChatCompletionMessageParam[],
   model: string,
   assistant: Awaited<ReturnType<typeof getAssistant>>,
+  signal: AbortSignal,
 ) {
   const runnableTools = assistant.tools
     .filter((t) => t.name)
@@ -72,11 +73,16 @@ async function runToolsAndHandleResponses(
   const messagesToCreate: Parameters<typeof createMessage>[0][] = [];
   const localTools = await getTools({});
   const runner = openai.beta.chat.completions
-    .runTools({
-      model,
-      messages,
-      tools: [...runnableTools, ...localTools],
-    })
+    .runTools(
+      {
+        model,
+        messages,
+        tools: [...runnableTools, ...localTools],
+      },
+      {
+        signal,
+      },
+    )
     .on("chatCompletion", async (completion) => {
       const message = completion.choices[0].message;
       const calledTools = message.role === "assistant" && message.tool_calls;
@@ -119,22 +125,37 @@ async function runToolsAndHandleResponses(
 }
 
 export const threadsQueueController = {
-  runningThreads: new Map<number, Promise<any>>(),
+  runningThreads: new Map<number, { promise: Promise<any>, abortController: AbortController }>(),
 
-  addThread(threadId: number, promise: Promise<any>) {
-    this.runningThreads.set(threadId, promise);
+  addThread(threadId: number, promise: Promise<any>, abortController: AbortController) {
+    console.log(`Adding thread ${threadId} to queue.`);
+    this.runningThreads.set(threadId, { promise, abortController });
   },
 
   removeThread(threadId: number) {
+    console.log(`Removing thread ${threadId} from queue.`);
     this.runningThreads.delete(threadId);
   },
 
   waitForThread(threadId: number): Promise<void> {
     const existingThread = this.runningThreads.get(threadId);
-    return existingThread ? existingThread : Promise.resolve();
+    if (existingThread) {
+      console.log(`Waiting for thread ${threadId} to finish.`);
+    } else {
+      console.log(`No existing thread found for ${threadId}, continuing.`);
+    }
+    return existingThread ? existingThread.promise : Promise.resolve();
   },
-};
 
+  cancelThread(threadId: number) {
+    const runningThread = this.runningThreads.get(threadId);
+    if (runningThread) {
+      console.log(`Canceling thread ${threadId}.`);
+      runningThread.abortController.abort();
+      this.removeThread(threadId);
+    }
+  }
+};
 export async function runThread(
   {
     threadId,
@@ -145,7 +166,7 @@ export async function runThread(
   },
   automode?: boolean,
 ) {
-  await threadsQueueController.waitForThread(threadId);
+  const signalController = new AbortController();
 
   const threadPromise = (async () => {
     const { thread, assistant } = await validateEntities(threadId, assistantId);
@@ -156,6 +177,7 @@ export async function runThread(
       processedMessages,
       assistant.model ?? "gpt-4o",
       assistant,
+      signalController.signal,
     );
     try {
       await setRunningStatus(thread.name, 1);
@@ -181,7 +203,7 @@ export async function runThread(
     }
   })();
 
-  threadsQueueController.addThread(threadId, threadPromise);
+  threadsQueueController.addThread(threadId, threadPromise, signalController);
 
   return await threadPromise;
 }

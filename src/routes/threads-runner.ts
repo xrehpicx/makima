@@ -13,12 +13,24 @@ export const threadsRunnerRoutes = new Elysia();
 threadsRunnerRoutes.post(
   "/run",
   async ({ body }) => {
-    return await runThread(body);
+    const mode = body.mode;
+
+    switch (mode) {
+      case "cancel":
+        threadsQueueController.cancelThread(body.threadId);
+    }
+
+    await threadsQueueController.waitForThread(body.threadId);
+    return await runThread({
+      assistantId: body.assistantId,
+      threadId: body.threadId,
+    });
   },
   {
     body: t.Object({
       threadId: t.Number(),
       assistantId: t.Number(),
+      mode: t.Optional(t.String()),
     }),
     detail: {
       summary: "Run Thread",

@@ -4,7 +4,6 @@ import { JSONSchema } from 'openai/lib/jsonschema.mjs';
 import { RunnableToolFunctionWithParse } from 'openai/lib/RunnableFunction.mjs';
 
 export function createOpenAIRunnableTool<T extends Record<string, any>>(tool: Tool): RunnableToolFunctionWithParse<T> {
-  console.log(`Creating runnable tool for tool ${tool.name}:`, tool);
   return {
     type: "function",
     function: {
