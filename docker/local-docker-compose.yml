@@ -2,6 +2,7 @@ services:
   db:
     image: pgvector/pgvector:pg16
     restart: always
+    name: makima-api-db
     environment:
       POSTGRES_USER: makima
       POSTGRES_PASSWORD: makima
@@ -13,6 +14,7 @@ services:
       - makima
   redis:
     image: redis:latest
+    name: makima-api-redis
     restart: always
     ports:
       - 6668:6379
