@@ -34,6 +34,7 @@ async function validateEntities(threadId: number, assistantId: number) {
 function processMessages(
   messages: Awaited<ReturnType<typeof getMessages>>,
   assistant: Awaited<ReturnType<typeof getAssistant>>,
+  additionalSystemPrompts?: string[],
 ) {
   const systemMessage = {
     role: "system",
@@ -42,6 +43,11 @@ function processMessages(
     ${assistant.prompt}
     `,
   };
+
+  const additionalPrompts = additionalSystemPrompts?.map((prompt) => ({
+    role: "system",
+    content: prompt,
+  }));
 
   const formattedMessages: OpenAI.ChatCompletionMessageParam[] = messages.map(
     (message) =>
@@ -55,6 +61,7 @@ function processMessages(
 
   return [
     systemMessage,
+    ...(additionalPrompts ?? []),
     ...formattedMessages,
   ] as OpenAI.ChatCompletionMessageParam[];
 }
@@ -125,9 +132,16 @@ async function runToolsAndHandleResponses(
 }
 
 export const threadsQueueController = {
-  runningThreads: new Map<number, { promise: Promise<any>, abortController: AbortController }>(),
+  runningThreads: new Map<
+    number,
+    { promise: Promise<any>; abortController: AbortController }
+  >(),
 
-  addThread(threadId: number, promise: Promise<any>, abortController: AbortController) {
+  addThread(
+    threadId: number,
+    promise: Promise<any>,
+    abortController: AbortController,
+  ) {
     console.log(`Adding thread ${threadId} to queue.`);
     this.runningThreads.set(threadId, { promise, abortController });
   },
@@ -154,15 +168,17 @@ export const threadsQueueController = {
       runningThread.abortController.abort();
       this.removeThread(threadId);
     }
-  }
+  },
 };
 export async function runThread(
   {
     threadId,
     assistantId,
+    additionalSystemPrompts,
   }: {
     threadId: number;
     assistantId: number;
+    additionalSystemPrompts?: string[];
   },
   automode?: boolean,
 ) {
@@ -171,7 +187,11 @@ export async function runThread(
   const threadPromise = (async () => {
     const { thread, assistant } = await validateEntities(threadId, assistantId);
     const messages = await getMessages({ threadIdentifier: threadId });
-    const processedMessages = processMessages(messages, assistant);
+    const processedMessages = processMessages(
+      messages,
+      assistant,
+      additionalSystemPrompts,
+    );
     const { runner, messagesToCreate } = await runToolsAndHandleResponses(
       threadId,
       processedMessages,

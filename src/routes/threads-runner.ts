@@ -24,6 +24,7 @@ threadsRunnerRoutes.post(
     return await runThread({
       assistantId: body.assistantId,
       threadId: body.threadId,
+      additionalSystemPrompts: body.prompt,
     });
   },
   {
@@ -31,6 +32,7 @@ threadsRunnerRoutes.post(
       threadId: t.Number(),
       assistantId: t.Number(),
       mode: t.Optional(t.String()),
+      prompt: t.Optional(t.Array(t.String())),
     }),
     detail: {
       summary: "Run Thread",
