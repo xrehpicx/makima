@@ -81,7 +81,7 @@ bun run dev
 
 **Check the Swagger at `/swagger`**
 
-### File Structure
+### Project Structure
 
 ```
 makima
